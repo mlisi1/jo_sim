@@ -1,0 +1,35 @@
+services:
+  jo-sim:
+    build:
+      network: host
+      context: .
+      dockerfile: docker/Dockerfile
+    privileged: true
+    image: jo-sim
+    stdin_open: true
+    tty: true
+    network_mode: host
+    ipc: host
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev:/dev
+      - ./jo_description:/home/ros/src/jo_description
+    environment:
+      - DISPLAY
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all,graphics,display,video,utility,compute
+      - __NV_PRIME_RENDER_OFFLOAD=1 
+      - __GLX_VENDOR_LIBRARY_NAME=nvidia
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    group_add:
+      - dialout
+
+    command: bash
