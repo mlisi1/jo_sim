@@ -6,6 +6,10 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /RobotModel1
+        - /RobotModel1/Mass Properties1
+        - /TF1
+        - /TF1/Frames1
       Splitter Ratio: 0.5
     Tree Height: 1216
   - Class: rviz_common/Selection
@@ -65,6 +69,16 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
+        back_left_roller:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        back_right_roller:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         base_footprint:
           Alpha: 1
           Show Axes: false
@@ -78,17 +92,27 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        caster_wheel_front:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        caster_wheel_rear:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         chassis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        front_left_roller:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        front_left_upper_roller:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        front_right_roller:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        front_right_upper_roller:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -98,7 +122,27 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        left_wheel:
+        left_back_top_belt:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_bottom_belt:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_front_bottom_belt:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_front_top_belt:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_top_roller:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -108,7 +152,27 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        right_wheel:
+        right_back_top_belt:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_bottom_belt:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_front_bottom_belt:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_front_top_belt:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_top_roller:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -133,21 +197,49 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        back_left_roller:
+          Value: true
+        back_right_roller:
+          Value: true
         base_footprint:
           Value: true
         base_link:
           Value: true
         camera_link:
           Value: true
-        caster_wheel_front:
-          Value: true
-        caster_wheel_rear:
-          Value: true
         chassis:
+          Value: true
+        front_left_roller:
+          Value: true
+        front_left_upper_roller:
+          Value: true
+        front_right_roller:
+          Value: true
+        front_right_upper_roller:
           Value: true
         imu_link:
           Value: true
+        left_back_top_belt:
+          Value: true
+        left_bottom_belt:
+          Value: true
+        left_front_bottom_belt:
+          Value: true
+        left_front_top_belt:
+          Value: true
+        left_top_roller:
+          Value: true
         rack:
+          Value: true
+        right_back_top_belt:
+          Value: true
+        right_bottom_belt:
+          Value: true
+        right_front_bottom_belt:
+          Value: true
+        right_front_top_belt:
+          Value: true
+        right_top_roller:
           Value: true
         velodyne:
           Value: true
@@ -155,16 +247,36 @@ Visualization Manager:
       Name: TF
       Show Arrows: true
       Show Axes: true
-      Show Names: true
+      Show Names: false
       Tree:
         base_link:
+          back_left_roller:
+            front_left_roller:
+              front_left_upper_roller:
+                left_front_top_belt:
+                  {}
+              left_front_bottom_belt:
+                {}
+            left_bottom_belt:
+              {}
+            left_top_roller:
+              left_back_top_belt:
+                {}
+          back_right_roller:
+            front_right_roller:
+              front_right_upper_roller:
+                right_front_top_belt:
+                  {}
+              right_front_bottom_belt:
+                {}
+            right_bottom_belt:
+              {}
+            right_top_roller:
+              right_back_top_belt:
+                {}
           base_footprint:
             {}
           camera_link:
-            {}
-          caster_wheel_front:
-            {}
-          caster_wheel_rear:
             {}
           chassis:
             {}
@@ -222,25 +334,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 2.6980605125427246
+      Distance: 1.7852120399475098
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.11591357737779617
-        Y: -0.1619134396314621
-        Z: 0.35908934473991394
+        X: -0.019206548109650612
+        Y: -0.20049962401390076
+        Z: 0.43400028347969055
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3253985643386841
+      Pitch: 0.2402023822069168
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.0703980922698975
+      Yaw: 1.1931103467941284
     Saved: ~
 Window Geometry:
   Displays:

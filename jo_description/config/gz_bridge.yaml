@@ -11,55 +11,61 @@
   gz_type_name: "gz.msgs.PointCloudPacked"
   direction: GZ_TO_ROS
 
-# # gz topic published by Sensors plugin (Camera)
-# - ros_topic_name: "camera/camera_info"
-#   gz_topic_name: "camera/camera_info"
-#   ros_type_name: "sensor_msgs/msg/CameraInfo"
-#   gz_type_name: "gz.msgs.CameraInfo"
-#   direction: GZ_TO_ROS
-
-
-# # gz topic published by DiffDrive plugin
+# DISABLED FOR NOW, ODOMETRY SEEMS TO NOT WORK FINE
+# gz topic published by TrackedVehicle plugin
 # - ros_topic_name: "odom"
-#   gz_topic_name: "odom"
+#   gz_topic_name: "/model/jo/odometry"
 #   ros_type_name: "nav_msgs/msg/Odometry"
 #   gz_type_name: "gz.msgs.Odometry"
 #   direction: GZ_TO_ROS
 
-# gz topic published by DiffDrive plugin
-- ros_topic_name: "tf"
-  gz_topic_name: "tf"
-  ros_type_name: "tf2_msgs/msg/TFMessage"
-  gz_type_name: "gz.msgs.Pose_V"
-  direction: GZ_TO_ROS
-
-# gz topic subscribed to by DiffDrive plugin
-- ros_topic_name: "diff_cont/cmd_vel_unstamped"
-  gz_topic_name: "cmd_vel"
+# gz topic subscribed to by TrackedVehicle plugin
+- ros_topic_name: "cmd_vel"
+  gz_topic_name: "/model/jo/cmd_vel"
   ros_type_name: "geometry_msgs/msg/Twist"
   gz_type_name: "gz.msgs.Twist"
   direction: ROS_TO_GZ
 
-# gz topic published by JointState plugin
-- ros_topic_name: "joint_states"
-  gz_topic_name: "joint_states"
-  ros_type_name: "sensor_msgs/msg/JointState"
-  gz_type_name: "gz.msgs.Model"
-  direction: GZ_TO_ROS
-
 
 # gz topic published by RGBDCamera plugin
-- ros_topic_name: "camera/depth_image"
-  gz_topic_name: "camera/depth_image"
+- ros_topic_name: "front_camera/depth_image"
+  gz_topic_name: "front_camera/depth_image"
   ros_type_name: "sensor_msgs/msg/Image"
   gz_type_name: "gz.msgs.Image"
   direction: GZ_TO_ROS
 
 
-- ros_topic_name: "camera/points"
-  gz_topic_name: "camera/points"
+# gz topic published by RGBDCamera plugin
+- ros_topic_name: "back_camera/depth_image"
+  gz_topic_name: "back_camera/depth_image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+
+
+- ros_topic_name: "front_camera/points"
+  gz_topic_name: "front_camera/points"
   ros_type_name: "sensor_msgs/msg/PointCloud2"
   gz_type_name: "gz.msgs.PointCloudPacked"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "back_camera/points"
+  gz_topic_name: "back_camera/points"
+  ros_type_name: "sensor_msgs/msg/PointCloud2"
+  gz_type_name: "gz.msgs.PointCloudPacked"
+  direction: GZ_TO_ROS
+
+
+- ros_topic_name: "front_camera/camera_info"
+  gz_topic_name: "front_camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "back_camera/camera_info"
+  gz_topic_name: "back_camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
   direction: GZ_TO_ROS
 
 
@@ -68,9 +74,6 @@
   ros_type_name: "sensor_msgs/msg/CameraInfo"
   gz_type_name: "gz.msgs.CameraInfo"
   direction: GZ_TO_ROS
-
-
-
 
 # gz topic published by Imu plugin
 - ros_topic_name: "imu/data"

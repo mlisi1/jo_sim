@@ -11,9 +11,9 @@
     <xacro:property name="b2i_P" value="0.0" />
     <xacro:property name="b2i_Y" value="0.0" />
     <xacro:property name="imu_mass" value="0.01" />
-    <xacro:property name="imu_len_x" value="0.01" />
-    <xacro:property name="imu_len_y" value="0.01" />
-    <xacro:property name="imu_len_z" value="0.01" />
+    <xacro:property name="imu_len_x" value="0.05" />
+    <xacro:property name="imu_len_y" value="0.05" />
+    <xacro:property name="imu_len_z" value="0.05" />
     
     <xacro:include filename="$(find jo_description)/urdf/inertial_macros.xacro" />
     

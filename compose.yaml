@@ -23,7 +23,7 @@ services:
       - /dev:/dev
       - ./jo_description:/home/ros/src/jo_description
     environment:
-      - DISPLAY
+      - DISPLAY=${DISPLAY}
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all,graphics,display,video,utility,compute
       - __NV_PRIME_RENDER_OFFLOAD=1 

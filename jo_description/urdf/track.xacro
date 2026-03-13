@@ -23,74 +23,80 @@
 
         <link name="back_${side}_roller">
             <visual>
+                <origin xyz="0 0 0" rpy="${-pi/2} ${-pi/2} 0"/>
                 <geometry>
-                    <cylinder radius="${back_roller_radius}" length="${track_width}"/>
+                    <cylinder radius="${back_roller_radius}" length="${track_width}"/>                    
                 </geometry>
                 <material name="black"/>                
             </visual>    
-            <!-- <collision>
+            <collision>
+                <origin xyz="0 0 0" rpy="${-pi/2} ${-pi/2} 0"/>
                 <geometry>
                     <cylinder radius="${back_roller_radius}" length="${track_width}"/>
                 </geometry>
-                <material name="black"/>                
-            </collision>      -->
+                <material name="orange"/>                
+            </collision>     
             <xacro:inertial_cylinder mass="0.01" radius="${back_roller_radius}" length="${track_width}">
-                    <origin xyz="0 0 0" rpy="0 0 0"/>
+                    <origin xyz="0 0 0" rpy="${-pi/2} ${-pi/2} 0"/>
             </xacro:inertial_cylinder>    
         </link>
 
         <joint name="base2back_${side}_roller" type="fixed">
             <parent link="base_link"/>
             <child link="back_${side}_roller"/>
-            <origin xyz="${-chassis_length/2 - back_roller2chassis + back_roller_radius} ${(track_width/2 + chassis_width/2) * (1 if side == 'left' else -1)} ${-wheel_offset_z}" rpy="${pi/2} 0 0" />
+            <origin xyz="${-chassis_length/2 - back_roller2chassis + back_roller_radius} ${(track_width/2 + chassis_width/2) * (1 if side == 'left' else -1)} ${-chassis_height}" rpy="${pi/2} ${pi/2} ${pi/2}" />
         </joint>
 
 
         <link name="front_${side}_roller">
             <visual>
+                <origin xyz="0 0 0" rpy="${-pi/2} 0 0"/>
                 <geometry>
                     <cylinder radius="${front_roller_radius}" length="${track_width}"/>
                 </geometry>
                 <material name="black"/>                
             </visual> 
-            <!-- <collision>
+            <collision>
+                <origin xyz="0 0 0" rpy="${-pi/2} 0 0"/>
                 <geometry>
                     <cylinder radius="${front_roller_radius}" length="${track_width}"/>
                 </geometry>
-                <material name="black"/>                
-            </collision>     -->
+                <material name="orange"/>                
+            </collision>    
             <xacro:inertial_cylinder mass="0.01" radius="${front_roller_radius}" length="${track_width}">
-                    <origin xyz="0 0 0" rpy="0 0 0"/>
+                    <origin xyz="0 0 0" rpy="${-pi/2} 0 0"/>
             </xacro:inertial_cylinder>   
         </link>
 
         <joint name="back_${side}_roller2front_${side}_roller" type="fixed">
             <parent link="back_${side}_roller"/>
             <child link="front_${side}_roller"/>
-            <origin xyz="${back2front_length} 0.0 0.0" rpy="0 0 ${pi/4}" />
+            <origin xyz="0.0 0.0 ${back2front_length}" rpy="0 0 0" />
         </joint>
 
 
 
         <link name="front_${side}_upper_roller">
             <visual>
+                <origin xyz="0 0 0" rpy="${-pi/2} ${-pi/4 - pi/3 - 17.7*pi/180} 0"/>
                 <geometry>
                     <cylinder radius="${front_upper_roller_radius}" length="${track_width}"/>
                 </geometry>
                 <material name="black"/>                
             </visual>        
             <collision>
+                <origin xyz="0 0 0" rpy="${-pi/2} ${-pi/4 - pi/3 - 17.7*pi/180} 0"/>
                 <geometry>
                     <cylinder radius="${front_upper_roller_radius}" length="${track_width}"/>
                 </geometry>
-                <material name="black"/>                
+                <material name="orange"/>                
             </collision>        
         </link>
 
         <joint name="front_${side}_roller2front_${side}_upper_roller" type="fixed">
             <parent link="front_${side}_roller"/>
             <child link="front_${side}_upper_roller"/>
-            <origin xyz="${front2upper_roller_length} 0.0 0.0" rpy="0 0 ${pi/4 + pi/3 + 17.7*pi/180}" />
+            <origin xyz="${-front2upper_roller_length * 0.7} 0.0 ${front2upper_roller_length * 0.7}" rpy="0 ${pi/4 + pi/3 + 17.7*pi/180} 0" />
         </joint>
 
 
@@ -105,7 +111,7 @@
                 <geometry>
                     <box size="${belt_thickness} ${track_width} ${back2front_length}"/>
                 </geometry>
-                <material name="black"/>                
+                <material name="orange"/>                
             </collision>     
             <xacro:inertial_box mass="0.01" x="${belt_thickness}" y="${track_width}" z="${back2front_length}">
                     <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -116,7 +122,7 @@
         <joint name="back_${side}_roller2${side}_bottom_belt" type="fixed">
             <parent link="back_${side}_roller"/>
             <child link="${side}_bottom_belt"/>
-            <origin xyz="${back2front_length/2} -0.065 0.0" rpy="${-pi/2} 0 ${-pi/2}" />
+            <origin xyz="0.065 0 ${back2front_length/2}" rpy="0 0 0" />
         </joint>
 
 
@@ -124,24 +130,29 @@
 
         <link name="${side}_front_bottom_belt">
             <visual>
+                <origin xyz="0 0 0" rpy="0 ${-pi/4} 0"/>
                 <geometry>
-                    <box size="${front2upper_roller_length} ${belt_thickness} ${track_width}"/>
+                    <box size="${belt_thickness} ${track_width} ${front2upper_roller_length}"/>
                 </geometry>
                 <material name="black"/>                
             </visual> 
             <collision>
+                <origin xyz="0 0 0" rpy="0 ${-pi/4} 0"/>
                 <geometry>
-                    <box size="${front2upper_roller_length} ${belt_thickness} ${track_width}"/>
+                    <box size="${belt_thickness} ${track_width} ${front2upper_roller_length}"/>
                 </geometry>
-                <material name="black"/>                
-            </collision>         
+                <material name="orange"/>                
+            </collision>  
+            <xacro:inertial_box mass="0.01" x="${belt_thickness}" y="${track_width}" z="${front2upper_roller_length}">
+                    <origin xyz="0 0 0" rpy="0 ${-pi/4} 0"/>
+            </xacro:inertial_box>       
         </link>
 
 
         <joint name="back_${side}_roller2${side}_front_bottom_belt" type="fixed">
             <parent link="front_${side}_roller"/>
             <child link="${side}_front_bottom_belt"/>
-            <origin xyz="${front2upper_roller_length/2} -0.065 0.0" rpy="0 0 0" />
+            <origin xyz="0.0 0.0 ${front2upper_roller_length/2}" rpy="0 0 0" />
         </joint>
 
 
@@ -150,23 +161,25 @@
 
         <link name="${side}_top_roller">
             <visual>
+                <origin xyz="0 0 0" rpy="${-pi/2} ${pi/6 + 2*pi/180} 0"/>
                 <geometry>
                     <cylinder radius="${upper_roller_radius}" length="${track_width}"/>
                 </geometry>
                 <material name="black"/>                
             </visual>   
             <collision>
+                <origin xyz="0 0 0" rpy="${-pi/2} ${pi/6 + 2*pi/180} 0"/>
                 <geometry>
                     <cylinder radius="${upper_roller_radius}" length="${track_width}"/>
                 </geometry>
-                <material name="black"/>                
+                <material name="orange"/>                
             </collision>        
         </link>
 
         <joint name="back_${side}_roller2${side}_top_roller" type="fixed">
             <parent link="back_${side}_roller"/>
             <child link="${side}_top_roller"/>
-            <origin xyz="${back2top_roller_x} ${back2top_roller_y} 0" rpy="0 0 ${pi/6 + pi + 2*pi/180}" />
+            <origin xyz="${-back2top_roller_y} 0 ${back2top_roller_x}" rpy="0 ${-pi/6 - 2*pi/180} 0" />
         </joint>
 
 
@@ -174,15 +187,15 @@
         <link name="${side}_back_top_belt">
             <visual>
                 <geometry>
-                    <box size="${back2top_length} ${belt_thickness} ${track_width}"/>
+                    <box size="${belt_thickness} ${track_width} ${back2top_length}"/>
                 </geometry>
                 <material name="black"/>                
             </visual>   
             <collision>
                 <geometry>
-                    <box size="${back2top_length} ${belt_thickness} ${track_width}"/>
+                    <box size="${belt_thickness} ${track_width} ${back2top_length}"/>
                 </geometry>
-                <material name="black"/>                
+                <material name="orange"/>                
             </collision>        
         </link>
 
@@ -190,7 +203,7 @@
         <joint name="${side}_top_roller2${side}_back_top_belt" type="fixed">
             <parent link="${side}_top_roller"/>
             <child link="${side}_back_top_belt"/>
-            <origin xyz="${back2top_length/2} -0.02 0.0" rpy="0 0 0" />
+            <origin xyz="-0.02 0.0 ${-back2top_length/2}" rpy="0 0 0" />
         </joint>
 
 
@@ -198,15 +211,15 @@
         <link name="${side}_front_top_belt">
             <visual>
                 <geometry>
-                    <box size="${top2front_upper_length} ${belt_thickness} ${track_width}"/>
+                    <box size="${top2front_upper_length} ${track_width} ${belt_thickness}"/>
                 </geometry>
                 <material name="black"/>                
             </visual>        
             <collision>
                 <geometry>
-                    <box size="${top2front_upper_length} ${belt_thickness} ${track_width}"/>
+                    <box size="${top2front_upper_length} ${track_width} ${belt_thickness}"/>
                 </geometry>
-                <material name="black"/>                
+                <material name="orange"/>                
             </collision>        
         </link>
 
@@ -214,13 +227,13 @@
         <joint name="front_${side}_upper_roller2${side}_front_top_belt" type="fixed">
             <parent link="front_${side}_upper_roller"/>
             <child link="${side}_front_top_belt"/>
-            <origin xyz="${top2front_upper_length/2} -0.065 0.0" rpy="0 0 0" />
+            <origin xyz="${top2front_upper_length/2} 0.0 ${belt_thickness/2 + 0.005}" rpy="0 ${-pi/9} 0" />
         </joint>
 
 
 
 
-        <!-- <gazebo reference="base2back_${side}_roller">
+        <gazebo reference="base2back_${side}_roller">
             <preserveFixedJoint>true</preserveFixedJoint>
         </gazebo>
 
@@ -231,18 +244,14 @@
                 <link>back_${side}_roller</link>
                 <debug>0</debug>
             </plugin>
-        </gazebo> -->
+        </gazebo>
 
-        <!-- <gazebo reference="back_${side}_roller">
+        <gazebo reference="back_${side}_roller">
             <self_collide>false</self_collide>
-            <mu1>0.7</mu1>
-            <mu2>150</mu2>
-            <fdir1>0 1 0</fdir1>
-        </gazebo> -->
+        </gazebo>
 
 
-
-        <!-- <gazebo reference="back_${side}_roller2front_${side}_roller">
+        <gazebo reference="back_${side}_roller2front_${side}_roller">
             <preserveFixedJoint>true</preserveFixedJoint>
         </gazebo>
 
@@ -253,7 +262,11 @@
                 <link>front_${side}_roller</link>
                 <debug>0</debug>
             </plugin>
-        </gazebo> -->
+        </gazebo>
+
+        <gazebo reference="front_${side}_roller">
+            <self_collide>false</self_collide>
+        </gazebo>
 
 
 
@@ -269,6 +282,31 @@
                 <link>${side}_bottom_belt</link>
                 <debug>0</debug>
             </plugin>
+        </gazebo>
+
+        <gazebo reference="${side}_bottom_belt">
+            <self_collide>false</self_collide>
+        </gazebo>
+
+
+
+
+
+        <gazebo reference="back_${side}_roller2${side}_front_bottom_belt">
+            <preserveFixedJoint>true</preserveFixedJoint>
+        </gazebo>
+
+
+        <gazebo>
+            <plugin filename="gz-sim-track-controller-system"
+                    name="gz::sim::systems::TrackController">
+                <link>${side}_front_bottom_belt</link>
+                <debug>0</debug>
+            </plugin>
+        </gazebo>
+
+        <gazebo reference="${side}_front_bottom_belt">
+            <self_collide>false</self_collide>
         </gazebo>
 
 

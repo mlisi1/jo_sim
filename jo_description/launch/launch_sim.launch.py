@@ -17,7 +17,7 @@ def generate_launch_description():
 
     package_name='jo_description'
 
-    rviz_arg = DeclareLaunchArgument('use_rviz', default_value='true', description='Whether to launch RViz')
+    rviz_arg = DeclareLaunchArgument('rviz', default_value='false', description='Whether to launch RViz')
 
     rviz_config = os.path.join(
         get_package_share_directory(package_name),
@@ -33,7 +33,7 @@ def generate_launch_description():
         output='screen',
         arguments=['-d', rviz_config],
         parameters=[{'use_sim_time': True}],
-        condition=IfCondition(LaunchConfiguration('use_rviz'))
+        condition=IfCondition(LaunchConfiguration('rviz'))
     )
 
     rsp = IncludeLaunchDescription(
@@ -41,29 +41,6 @@ def generate_launch_description():
                     get_package_share_directory(package_name),'launch','description.launch.py'
                 )]), launch_arguments={'use_sim_time': 'true', 'use_ros2_control': 'true'}.items()
     )
-
-    # joystick = IncludeLaunchDescription(
-    #             PythonLaunchDescriptionSource([os.path.join(
-    #                 get_package_share_directory(package_name),'launch','joystick.launch.py'
-    #             )]), launch_arguments={'use_sim_time': 'true'}.items()
-    # )
-
-    # twist_mux_params = os.path.join(get_package_share_directory(package_name),'config','twist_mux.yaml')
-    # twist_mux = Node(
-    #         package="twist_mux",
-    #         executable="twist_mux",
-    #         parameters=[twist_mux_params, {'use_sim_time': True}],
-    #         remappings=[('/cmd_vel_out','/diff_cont/cmd_vel_unstamped')]
-    #     )
-
-
-    # default_world = os.path.join(
-    #     get_package_share_directory(package_name),
-    #     'worlds',
-    #     'external',
-    #     'worlds',
-    #     'office_cpr.world'
-    #     )    
     
     default_world = os.path.join(
         get_package_share_directory(package_name),
@@ -79,15 +56,6 @@ def generate_launch_description():
         description='World to load'
         )
 
-    # Include the Gazebo launch file, provided by the ros_gz_sim package
-    # gazebo = IncludeLaunchDescription(
-    #             PythonLaunchDescriptionSource([os.path.join(
-    #                 get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')]),
-    #                 launch_arguments={'on_exit_shutdown': 'true'}.items()
-    #          )
-    
-
-
     gazebo = IncludeLaunchDescription(
                     PythonLaunchDescriptionSource([os.path.join(
                         get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')]),
@@ -100,7 +68,7 @@ def generate_launch_description():
                                    '-name', 'jo',
                                    '-x', '0.0',
                                    '-y', '0.0',
-                                   '-z', '0.7'],
+                                   '-z', '3.7'],
                         output='screen')
 
 
@@ -131,41 +99,19 @@ def generate_launch_description():
     ros_gz_image_bridge = Node(
         package="ros_gz_image",
         executable="image_bridge",
-        arguments=["/camera/image"]
+        arguments=["/front_camera/image", "/back_camera/image"],
     )
-
-
-
-    # Code for delaying a node (I haven't tested how effective it is)
-    # 
-    # First add the below lines to imports
-    # from launch.actions import RegisterEventHandler
-    # from launch.event_handlers import OnProcessExit
-    #
-    # Then add the following below the current diff_drive_spawner
-    # delayed_diff_drive_spawner = RegisterEventHandler(
-    #     event_handler=OnProcessExit(
-    #         target_action=spawn_entity,
-    #         on_exit=[diff_drive_spawner],
-    #     )
-    # )
-    #
-    # Replace the diff_drive_spawner in the final return with delayed_diff_drive_spawner
-
 
 
     # Launch them all!
     return LaunchDescription([
         rsp,
-        # joystick,
-        # twist_mux,
+        rviz_arg,
         world_arg,
         gazebo,
         spawn_entity,
-        diff_drive_spawner,
-        joint_broad_spawner,
         ros_gz_bridge,
         ros_gz_image_bridge,
         rviz,
-        rviz_arg
+        
     ])
