@@ -48,7 +48,13 @@ def generate_launch_description():
         'external',
         'worlds',
         'office_cpr.world'
-        )  
+        ) 
+
+    # default_world = os.path.join(
+    #     get_package_share_directory(package_name),
+    #     'worlds',
+    #     'obstacles.sdf'
+    #     )  
     
     world = LaunchConfiguration('world')
 
