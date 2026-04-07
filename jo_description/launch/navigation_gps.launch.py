@@ -24,6 +24,8 @@ from launch_ros.actions import LoadComposableNodes
 from launch_ros.actions import Node
 from launch_ros.descriptions import ComposableNode
 from nav2_common.launch import RewrittenYaml
+from launch.actions import TimerAction, ExecuteProcess
+
 
 
 def generate_launch_description():
@@ -270,24 +272,51 @@ def generate_launch_description():
 
 
 
-    robot_localization_node = Node(
-        package='robot_localization',
-        executable='ekf_node',
-        name='ekf_filter_node',
-        output='screen',
+    robot_localization_global = Node(
+        package="robot_localization",
+        executable="ekf_node",
+        name="ekf_filter_node_map",
+        output="screen",
+        remappings=[("odometry/filtered", "odometry/global")],
+        parameters=[configured_params, {'use_sim_time': LaunchConfiguration('use_sim_time')}],
+    )
+
+    robot_localization_local = Node(
+        package="robot_localization",
+        executable="ekf_node",
+        name="ekf_filter_node_odom",
+        output="screen",
+        remappings=[("odometry/filtered", "odometry/local")],
         parameters=[configured_params, {'use_sim_time': LaunchConfiguration('use_sim_time')}]
     )
 
 
-    gnss = Node(
+    navsat_transform_node = Node(
         package='robot_localization',
         executable='navsat_transform_node',
         name='navsat_transform_node',
+        output='log',
         parameters=[configured_params],
+        arguments=['--ros-args','--log-level','WARN'],
         remappings=[
-            ('imu/data', 'imu/data'),
+            ('imu', 'imu/data'),
             ('gps/fix', 'gnss'),      # adjust
-            ('odometry/filtered', 'odometry/filtered'), # from local EKF
+            ('odometry/filtered', 'odometry/global'), # from local EKF
+        ]
+    )
+
+
+    set_zone = TimerAction(
+        period=1.0,
+        actions=[
+            ExecuteProcess(
+            cmd=[
+                'ros2', 'service', 'call', '/setUTMZone',
+                'robot_localization/srv/SetUTMZone',
+                '{utm_zone: 32N}'
+            ],
+            output='screen'
+            )
         ]
     )
 
@@ -296,8 +325,9 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='map_to_odom_static_tf',
-        arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom']
+        arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'gps']
     )
+
 
 
     
@@ -317,7 +347,9 @@ def generate_launch_description():
         load_nodes,
         load_composable_nodes,
         rviz,
-        robot_localization_node,
-        gnss,
+        robot_localization_local,
+        navsat_transform_node,
+        robot_localization_global,       
+        set_zone,
         static_map
     ])

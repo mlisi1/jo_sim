@@ -169,7 +169,7 @@ class GpsWaypointFollower(Node):
         self.get_logger().info('AUTO mode: sending all waypoints at once.')
 
         goal = FollowGPSWaypoints.Goal()
-        goal.number_of_loops = 1
+        goal.number_of_loops = 0
         goal.gps_poses = [self._make_geopose(wp) for wp in self._waypoints]
 
         self.get_logger().info(
@@ -201,7 +201,7 @@ class GpsWaypointFollower(Node):
         )
 
         goal = FollowGPSWaypoints.Goal()
-        goal.number_of_loops = 1
+        goal.number_of_loops = 0
         goal.gps_poses = [self._make_geopose(wp)]
 
         send_future = self._action_client.send_goal_async(
