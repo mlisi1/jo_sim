@@ -15,7 +15,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
 
 
-    package_name='jo_description'
+    package_name='jo_sim'
 
     rviz_arg = DeclareLaunchArgument('rviz', default_value='false', description='Whether to launch RViz')
 
@@ -38,23 +38,23 @@ def generate_launch_description():
 
     rsp = IncludeLaunchDescription(
                 PythonLaunchDescriptionSource([os.path.join(
-                    get_package_share_directory(package_name),'launch','description.launch.py'
+                    get_package_share_directory('jo_description'),'launch','description.launch.py'
                 )]), launch_arguments={'use_sim_time': 'true', 'use_ros2_control': 'true'}.items()
     )
     
-    default_world = os.path.join(
-        get_package_share_directory(package_name),
-        'worlds',
-        'external',
-        'worlds',
-        'office_cpr.world'
-        ) 
-
     # default_world = os.path.join(
     #     get_package_share_directory(package_name),
     #     'worlds',
-    #     'obstacles.sdf'
-    #     )  
+    #     'external',
+    #     'worlds',
+    #     'office_cpr.world'
+    #     ) 
+
+    default_world = os.path.join(
+        get_package_share_directory(package_name),
+        'worlds',
+        'obstacles.sdf'
+        )  
     
     world = LaunchConfiguration('world')
 
@@ -67,7 +67,7 @@ def generate_launch_description():
     gazebo = IncludeLaunchDescription(
                     PythonLaunchDescriptionSource([os.path.join(
                         get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')]),
-                        launch_arguments={'gz_args': ['-r -v4 ', world], 'on_exit_shutdown': 'true'}.items()
+                        launch_arguments={'gz_args': ['-r -v3 ', world], 'on_exit_shutdown': 'true'}.items()
     )
 
     # Run the spawner node from the ros_gz_sim package. The entity name doesn't really matter if you only have a single robot.

@@ -23,6 +23,8 @@ services:
       - ~/.Xauthority:/tmp/.Xauthority:ro
       - /dev:/dev
       - ./jo_description:/home/ros/src/jo_description
+      - ./jo_navigation:/home/ros/src/jo_navigation
+      - ./jo_sim:/home/ros/src/jo_sim
     environment:
       - DISPLAY=${DISPLAY}
       - NVIDIA_VISIBLE_DEVICES=all

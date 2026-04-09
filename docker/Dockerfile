@@ -40,6 +40,7 @@ RUN apt update -y \
     python3-rosdep \
     software-properties-common \
     ca-certificates \
+    libmetis-dev \
     gnupg \
     wget \
     xterm \
@@ -49,6 +50,25 @@ RUN sudo curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
 RUN sudo apt update
 RUN sudo apt install -y gz-harmonic
+
+
+
+# --- CUDA repo (Ubuntu 24.04) ---
+RUN wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb \
+ && dpkg -i cuda-keyring_1.1-1_all.deb \
+ && wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-ubuntu2404.pin \
+ && mv cuda-ubuntu2404.pin /etc/apt/preferences.d/cuda-repository-pin-600 
+
+ENV CUDAToolkit_ROOT=/usr/local/cuda
+
+RUN curl -s https://koide3.github.io/ppa/setup_ppa.sh | sudo bash
+RUN sudo add-apt-repository -y ppa:koide3/iridescence
+RUN apt update -y \
+    && apt install -y libiridescence-dev \
+    libgtsam-points-cuda13.1-dev \
+    cuda-cudart-13-0 \
+    cuda-nvcc-13-0 \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 
 # Create a non-root user
@@ -82,6 +102,13 @@ USER ros
 WORKDIR /home/$USERNAME/
 RUN mkdir src
 
+# GLIM
+RUN cd src && git clone https://github.com/mlisi1/glim_ros2.git
+RUN cd src && git clone https://github.com/koide3/glim.git
+
+SHELL ["/bin/bash", "-c"]
+RUN source /opt/ros/jazzy/setup.bash \
+ && colcon build
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN sudo chmod +x /entrypoint.sh

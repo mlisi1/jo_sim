@@ -4,7 +4,7 @@ set -e
 source /opt/ros/jazzy/setup.bash
 
 colcon build \
-  --packages-select jo_description \
+  --packages-select jo_description jo_sim jo_navigation\
   --symlink-install \
 
 # 3) Source overlay
