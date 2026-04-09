@@ -2,9 +2,9 @@
 
 <package format="3">
 
-  <name>jo_description</name>
+  <name>jo_sim</name>
   <version>1.0.13</version>
-  <description>Jo Description Package</description>
+  <description>Jo Simulation Package</description>
 
   <license>BSD-3</license>
 

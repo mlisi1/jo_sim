@@ -1,0 +1,3 @@
+[submodule "jo_navigation"]
+	path = jo_navigation
+	url = https://github.com/mlisi1/jo_navigation.git
