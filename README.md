@@ -85,8 +85,8 @@ To control the robot you will need to open another terminal and run
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p use_sim_time:=true
 ```
 <div align="center">
-  <img src="res/rviz.png" alt="Rviz view" height="200"/>
-  <img src="res/gazebo.png" alt="Gazebo View" height="200"/>
+  <img src="res/rviz.png" alt="Rviz view" height="250"/>
+  <img src="res/gazebo.png" alt="Gazebo View" height="250"/>
 </div>
 
 ### 2. Localization stack
@@ -129,11 +129,10 @@ ros2 launch jo_navigation navigation_gps.launch.py use_sim_time:=true rviz:=true
 This will require the **Global Odometry** to be up and running. This is a modified version of the local navigation stack able to correctly use the ```map``` frame published and the new odometry sources.
 
 
-<!-- <div align="center">
+<div align="center">
   <img src="res/navigation.gif" alt="Navigation Stack" height="530"/>
-</div> -->
+</div>
 
-<video src="res/navigation_demo.mp4" autoplay muted loop playsinline width="600"></video>
 
 ## ROS Topics
 
