@@ -1,6 +1,6 @@
 
 
-# Jo Description
+# Jo Sim
 [![ROS 2 Jazzy](https://img.shields.io/badge/ROS%202-Jazzy-34C759?style=flat-square&logo=ros)](https://docs.ros.org/)
 [![Gazebo Harmonic](https://img.shields.io/badge/Gazebo-Harmonic-FF6B35?style=flat-square&logo=gazebo)](https://gazebosim.org/)
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?style=flat-square&logo=docker)](https://www.docker.com/)
@@ -10,7 +10,7 @@
 A comprehensive ROS 2 robot description package for the Jo tracked robot platform, featuring complete robot modeling, simulation, and navigation capabilities using Gazebo (Harmonic) and ROS 2 Jazzy.
 
 <div align="center">
-  <img src="res/description.png" alt="Jo Overview" height="500"/>
+  <img src="res/description.png" alt="Jo Overview" height="400"/>
 </div>
 
 
@@ -28,16 +28,12 @@ A comprehensive ROS 2 robot description package for the Jo tracked robot platfor
 - **RViz Visualization**: Pre-configured visualization configs for display, simulation, and navigation
 
 
-## Project Structure
-```
-jo_description/
-├── launch/                 # ROS 2 launch files
-├── urdf/                   # Robot URDF/Xacro models
-├── config/                 # Configuration files (bridge, nav2 params)
-├── rviz/                   # RViz visualization configs
-├── worlds/                 # Gazebo simulation worlds
-└── package.xml            # ROS 2 package manifest
-```
+## Packages
++  ```jo_description``` - URDF model of the robot, complete with sensors
++ ```jo_sim``` - Simulation package; used to launch Gazebo sim and GLIM SLAM
++ ```jo_navigation``` - Package containing configs and launch files for localization and navigation
+
+
 
 # Quick Start
 
@@ -64,15 +60,9 @@ docker compose exec jo-sim bash
 
 Once in the container, you can run various launch files:
 
-### 1. View Robot Description (RViz only)
+### 1. Run Full Simulation with Gazebo
 ```bash
-ros2 launch jo_description description.launch.py use_rviz:=true
-```
-This will launch the RViz configuration to see the URDF model of the robot.
-
-### 2. Run Full Simulation with Gazebo
-```bash
-ros2 launch jo_description launch_sim.launch.py rviz:=true
+ros2 launch jo_sim launch_sim.launch.py rviz:=true
 ```
 
 This launches:
@@ -81,7 +71,9 @@ This launches:
 - ROS-Gazebo bridge for sensor/actuator communication
 - RViz visualization
 
-The simulation includes:
+Adding ```glim:=true``` to the launch will run GLIM configured to work with the simulation.
+
+The simulation also includes:
 - Simulated tracks using Gazebo's TrackedVehicle and TrackController plugins
 - Simulated IMU
 - Simulated 3D GPU lidar using RGLGazeboPlugin
@@ -93,25 +85,55 @@ To control the robot you will need to open another terminal and run
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p use_sim_time:=true
 ```
 <div align="center">
-  <img src="res/rviz.png" alt="Rviz view" height="300"/>
-  <img src="res/gazebo.png" alt="Gazebo View" height="300"/>
+  <img src="res/rviz.png" alt="Rviz view" height="200"/>
+  <img src="res/gazebo.png" alt="Gazebo View" height="200"/>
 </div>
+
+### 2. Localization stack
+In this implementation, GLIM will not publish on ```/tf```. This means that the localization module is needed to have a non inertial visualization.
+
+#### Local Odometry
+Launching 
+```bash
+ros2 launch jo_navigation localization.launch.py use_sim_time:=true
+```
+will run an instance of the EKF node from [```robot_localization```](https://docs.ros.org/en/melodic/api/robot_localization/html/index.html) configured to estimate ```odom``` to ```base_link```, allowing to use the first as fixed frame in RViz.
+
+#### Global Odometry
+To achieve global localization, launch 
+```bash
+ros2 launch jo_navigation localization_gps.launch.py use_sim_time:=true
+```
+This will launch two instances of the EKF node. One performs local odometry (in a manner identical to the previous launch file), while the other uses GPS data to perform global localization, publishing the transform from ```map``` to ```odom```.
+
+**Note:** As of now this localization is still not functional in the simulation, as there is not yet a working implementation o simulated GPS.
 
 ### 3. Autonomous Navigation with Nav2
+Similarly to the odometry, there are two main modalities for the navigation.
+
+#### Local navigation
+To perform local navigation, launch
 ```bash
-ros2 launch jo_description launch_sim.launch.py
-# In another terminal:
-ros2 launch jo_description navigation.launch.py rviz:=true use_sim_time:=true
+ros2 launch jo_navigation navigation_local.launch.py use_sim_time:=true rviz:=true
 ```
-Beside the simulation this will launch the navigation stack and RViz configured to see the perception stack, the local costmap as well as the planned path. To give the robot a desired waypoint you need to click on RViz 2D Goal Pose and select the desired point on the map.
+This will require the **Local Odometry** to be up and running.
+This will launch the navigation stack and RViz configured to see the perception stack, the local costmap as well as the planned path. To give the robot a desired waypoint you need to click on RViz 2D Goal Pose and select the desired point on the map.
+Given that it's a local navigation, the fixed frame needs to be set to ```odom```.
 
-**Note:** to correctly run the navigation stack, the odometry is expected on the topic ```/glim_ros/odometry_corrected```. This can be changed in ```nav2_params.yaml``` if you want to use another odometry source.
-The intended way to run the odometry is by running [GLIM](https://github.com/koide3/glim.git) as implemented in [jo-zotac](https://github.com/mlisi1/jo-zotac.git).
+
+#### Global Navigation
+To perform global navigation, launch
+```bash
+ros2 launch jo_navigation navigation_gps.launch.py use_sim_time:=true rviz:=true
+```
+This will require the **Global Odometry** to be up and running. This is a modified version of the local navigation stack able to correctly use the ```map``` frame published and the new odometry sources.
 
 
-<div align="center">
+<!-- <div align="center">
   <img src="res/navigation.gif" alt="Navigation Stack" height="530"/>
-</div>
+</div> -->
+
+<video src="res/navigation_demo.mp4" autoplay muted loop playsinline width="600"></video>
 
 ## ROS Topics
 
@@ -136,55 +158,11 @@ The intended way to run the odometry is by running [GLIM](https://github.com/koi
 ```
 
 
-## Launch File Arguments
-
-### description.launch.py
-```bash
-use_rviz:=true/false            # Enable RViz visualization (default: false)
-use_sim_time:=true/false        # Use Gazebo simulation time (default: false)
-```
-
-### launch_sim.launch.py
-```bash
-rviz:=true/false                # Enable RViz visualization (default: false)
-world:=<path_to_world>          # Gazebo world file
-```
-
-### navigation.launch.py
-```bash
-use_sim_time:=true              # Always true in simulation
-```
-
-## Configuration
-
-### Gazebo Bridge Configuration
-The `config/gz_bridge.yaml` file configures which ROS topics are bridged with Gazebo:
-- Sensor data publishing (cameras, LiDAR, IMU)
-- Velocity command subscription
-- Image transport setup
-
-### Navigation Parameters
-`config/nav2_params.yaml` contains Nav2-specific parameters:
-- Planner algorithms (NavFn, Theta*)
-- Controller parameters (DWB, Regulated Pure Pursuit)
-- Costmap configuration
-- Behavior tree parameters
-
-### RViz Configurations
-Three pre-configured RViz layouts are provided:
-- **display.rviz**: Shows robot model with TF frames
-- **sim.rviz**: Simulation-focused with sensor visualizations
-- **navigation.rviz**: Navigation-focused with costmaps and plans
-
-
-
-
-
 
 ### Custom Worlds
 Place custom world files in `jo_description/worlds/external/worlds/`:
 ```bash
-ros2 launch jo_description launch_sim.launch.py world:=/path/to/custom.world
+ros2 launch jo_sim launch_sim.launch.py world:=/path/to/custom.world
 ```
 
 
