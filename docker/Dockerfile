@@ -4,9 +4,12 @@ ENV GZ_VERSION=harmonic
 ARG DISTRO=jazzy
 
 RUN apt update -y \
-    && apt install -y pipx \
+    && apt install -y python3-pip \
     nano \
+    libxcb-cursor0 \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN pip install --break-system-packages ruamel.yaml PyQt6 
 
 RUN apt update -y \
     && apt install -y ros-${DISTRO}-plotjuggler \
@@ -105,6 +108,8 @@ RUN mkdir src
 # GLIM
 RUN cd src && git clone https://github.com/mlisi1/glim_ros2.git
 RUN cd src && git clone https://github.com/koide3/glim.git
+
+RUN cd src && git clone https://github.com/sutharsan-311/nav2_config.git
 
 RUN cd RGLGazeboPlugin && sudo touch COLCON_IGNORE
 

@@ -4,7 +4,7 @@ from ament_index_python.packages import get_package_share_directory
 
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch.conditions import IfCondition
@@ -132,6 +132,14 @@ def generate_launch_description():
     )
 
 
+    delayed_glim = TimerAction(
+        period=4.0,
+        actions=[
+            glim
+        ]
+    )
+
+
     # Launch them all!
     return LaunchDescription([
         glim_param_folder_arg,
@@ -144,5 +152,5 @@ def generate_launch_description():
         ros_gz_bridge,
         ros_gz_image_bridge,
         rviz,
-        glim
+        delayed_glim
     ])
