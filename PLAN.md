@@ -20,7 +20,7 @@ Order: **A → DendROS/Testudo → B → C → E → F → D**.
 | Velodyne VLP-16 | `/velodyne_points` | PointCloud2 (x,y,z,intensity,ring,time) | `velodyne` |
 | Xsens MTi | `/imu/data` | Imu | `imu_link` |
 | Xsens GNSS | `/gnss` | NavSatFix | `imu_link` |
-| RealSense D455 (ns `front_camera`, node `camera`) | `/front_camera/camera/color/image_raw`, `.../color/camera_info`, `.../aligned_depth_to_color/image_raw`, `.../aligned_depth_to_color/camera_info`, `.../depth/color/points` | Image / CameraInfo / PointCloud2 | `front_camera_color_optical_frame`, `front_camera_depth_optical_frame` |
+| RealSense D456 (ns `front_camera`, node `camera`) | `/front_camera/camera/color/image_raw`, `.../color/camera_info`, `.../aligned_depth_to_color/image_raw`, `.../aligned_depth_to_color/camera_info`, `.../depth/color/points` | Image / CameraInfo / PointCloud2 | `front_camera_color_optical_frame`, `front_camera_depth_optical_frame` |
 | RealSense TF (`publish_tf: true`) | `front_camera_link → front_camera_{color,depth}_frame → ..._optical_frame` | TF static | — |
 | Bunker base | subscribes `/cmd_vel`; **no odometry** (`odom_frame: none`) | Twist | — |
 | Middleware | `rmw_cyclonedds_cpp` + `docker/utils/cyclonedds.xml` (`AllowMulticast=spdp`) | | |
@@ -143,7 +143,7 @@ Findings:
 
 ## Phase D — Fidelity
 
-- **D1 sensors**: noise models of Xsens, VLP-16, D455. Lidar must reproduce the Velodyne `ring` /
+- **D1 sensors**: noise models of Xsens, VLP-16, D456. Lidar must reproduce the Velodyne `ring` /
   per-point `time` fields and end-of-sweep stamping (GLIM deskewing depends on it); RealSense
   depth encoding (16UC1 mm vs Gazebo 32FC1 m) to be evaluated.
 - **D2 odometry**: the robot has none, so `TrackedVehicle` odometry stays out of the ROS interface

@@ -1,4 +1,4 @@
-# RealSense D455 (real: realsense2_camera, namespace front_camera, node camera).
+# RealSense D456 (real: realsense2_camera, namespace front_camera, node camera).
 # The colour image is bridged by ros_gz_image (see launch_sim.launch.py), the cloud is restamped
 # by frame_restamp. Gazebo renders depth from the colour viewpoint, so it is already aligned.
 - ros_topic_name: "front_camera/camera/color/camera_info"

@@ -101,7 +101,7 @@ Results are kept in `user_worlds/.cache/world_status.json`.
 | Velodyne VLP-16 (RGL) | `/velodyne_points` (x y z intensity ring time), `/scan` (velodyne_laserscan) | `velodyne` |
 | Xsens MTi | `/imu/data` | `imu_link` |
 | Xsens GNSS | `/gnss` | `imu_link` |
-| RealSense D455 front/back | `/<cam>_camera/camera/color/image_raw`, `.../color/camera_info`, `.../aligned_depth_to_color/image_raw`, `.../aligned_depth_to_color/camera_info`, `.../depth/color/points` | `<cam>_camera_color_optical_frame` (cloud: `<cam>_camera_depth_frame`) |
+| RealSense D456 front/back | `/<cam>_camera/camera/color/image_raw`, `.../color/camera_info`, `.../aligned_depth_to_color/image_raw`, `.../aligned_depth_to_color/camera_info`, `.../depth/color/points` | `<cam>_camera_color_optical_frame` (cloud: `<cam>_camera_depth_frame`) |
 | Bunker base | `/cmd_vel` (no odometry, as on the robot) | |
 
 The RealSense TF tree below `<cam>_camera_link` is published by the simulator (`driver_emulation.launch.py`), as the driver does on the robot.
