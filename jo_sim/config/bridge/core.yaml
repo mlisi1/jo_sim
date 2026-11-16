@@ -1,0 +1,14 @@
+# Always bridged
+- ros_topic_name: "clock"
+  gz_topic_name: "clock"
+  ros_type_name: "rosgraph_msgs/msg/Clock"
+  gz_type_name: "gz.msgs.Clock"
+  direction: GZ_TO_ROS
+
+# Bunker base: /cmd_vel -> TrackedVehicle. The TrackedVehicle odometry is NOT bridged:
+# the real robot has no wheel odometry (bunker_base runs with odom_frame: none).
+- ros_topic_name: "cmd_vel"
+  gz_topic_name: "/model/jo/cmd_vel"
+  ros_type_name: "geometry_msgs/msg/Twist"
+  gz_type_name: "gz.msgs.Twist"
+  direction: ROS_TO_GZ

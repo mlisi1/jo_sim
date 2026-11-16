@@ -1,0 +1,7 @@
+# Lidar with simulated noise: bridged to /sim/velodyne_points_raw, jo_sim range_noise publishes
+# /velodyne_points (the RGL plugin has no noise model). Without noise lidar.yaml is used.
+- ros_topic_name: "sim/velodyne_points_raw"
+  gz_topic_name: "velodyne_points"
+  ros_type_name: "sensor_msgs/msg/PointCloud2"
+  gz_type_name: "gz.msgs.PointCloudPacked"
+  direction: GZ_TO_ROS

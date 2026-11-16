@@ -30,7 +30,7 @@ A comprehensive ROS 2 robot description package for the Jo tracked robot platfor
 
 ## Packages
 +  ```jo_description``` - URDF model of the robot, complete with sensors
-+ ```jo_sim``` - Simulation package; used to launch Gazebo sim and GLIM SLAM
++ ```jo_sim``` - Simulation package: Gazebo world, robot, sensor bridges, driver emulation and the jo_bringup-equivalent launch
 + ```jo_navigation``` - Package containing configs and launch files for localization and navigation
 
 
@@ -56,115 +56,51 @@ docker compose up --build
 docker compose exec jo-sim bash
 ```
 
+### Configuration
+`.env` holds the build options (`BUILD_RTABMAP`, `GLIM_ROS_REF`, `DENDROS_VERSION`, `BUILD_JOBS`, `CUDA_ARCHS`) and runtime settings. RTAB-Map (visual odometry / visual SLAM) is built from source only with `BUILD_RTABMAP=true`; without it the localization stack runs without visual odometry.
+
+Mounted folders: `user_worlds/` (your worlds), `saved_maps/` (GLIM and RTAB-Map maps), `bags/`, `docker/utils/` (aliases, CycloneDDS config; editable without rebuilding).
+
 ### Inside the Container
 
-Once in the container, you can run various launch files:
+The simulator exposes the **same ROS interface as the real robot** (jo-zotac): same topics, frame ids and TF ownership. The stack runs unchanged on top of it with `use_sim_time:=true`.
 
-### 1. Run Full Simulation with Gazebo
+#### Same commands as the robot
+`sim_bringup.launch.py` accepts the flags of `jo_bringup.launch.py`, and the aliases have the same names as in jo-zotac:
 ```bash
-ros2 launch jo_sim launch_sim.launch.py rviz:=true
+full_navigation                       # front/back cameras + localization + local navigation + RViz
+full_gps_navigation                   # + GNSS, GPS localization and navigation
+ros2 launch jo_sim sim_bringup.launch.py localization:=true world:=warehouse x:=2.0 yaw:=1.57
 ```
+Simulator-only arguments: `world`, `gui`, `x y z yaw`, `latitude longitude elevation` (GNSS datum for worlds without `<spherical_coordinates>`), `sim_noise` (sensor noise on/off, default on), `lidar_range_stddev`, `glim_config`.
 
-This launches:
-- Gazebo simulator with the robot in an office world
-- Robot state publisher 
-- ROS-Gazebo bridge for sensor/actuator communication
-- RViz visualization
-
-Adding ```glim:=true``` to the launch will run GLIM configured to work with the simulation.
-
-The simulation also includes:
-- Simulated tracks using Gazebo's TrackedVehicle and TrackController plugins
-- Simulated IMU
-- Simulated 3D GPU lidar using RGLGazeboPlugin
-- Two simulated RGBD cameras
-- Several premade worlds, most coming from [this repo](https://github.com/leonhartyao/gazebo_models_worlds_collection.git)
-
-To control the robot you will need to open another terminal and run 
+#### Simulator only
 ```bash
-ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p use_sim_time:=true
-```
-<div align="center">
-  <img src="res/rviz.png" alt="Rviz view" height="250"/>
-  <img src="res/gazebo.png" alt="Gazebo View" height="250"/>
-</div>
-
-### 2. Localization stack
-In this implementation, GLIM will not publish on ```/tf```. This means that the localization module is needed to have a non inertial visualization.
-
-#### Local Odometry
-Launching 
-```bash
-ros2 launch jo_navigation localization.launch.py use_sim_time:=true
-```
-will run an instance of the EKF node from [```robot_localization```](https://docs.ros.org/en/melodic/api/robot_localization/html/index.html) configured to estimate ```odom``` to ```base_link```, allowing to use the first as fixed frame in RViz.
-
-#### Global Odometry
-To achieve global localization, launch 
-```bash
-ros2 launch jo_navigation localization_gps.launch.py use_sim_time:=true
-```
-This will launch two instances of the EKF node. One performs local odometry (in a manner identical to the previous launch file), while the other uses GPS data to perform global localization, publishing the transform from ```map``` to ```odom```.
-
-**Note:** As of now this localization is still not functional in the simulation, as there is not yet a working implementation o simulated GPS.
-
-### 3. Autonomous Navigation with Nav2
-Similarly to the odometry, there are two main modalities for the navigation.
-
-#### Local navigation
-To perform local navigation, launch
-```bash
-ros2 launch jo_navigation navigation_local.launch.py use_sim_time:=true rviz:=true
-```
-This will require the **Local Odometry** to be up and running.
-This will launch the navigation stack and RViz configured to see the perception stack, the local costmap as well as the planned path. To give the robot a desired waypoint you need to click on RViz 2D Goal Pose and select the desired point on the map.
-Given that it's a local navigation, the fixed frame needs to be set to ```odom```.
-
-
-#### Global Navigation
-To perform global navigation, launch
-```bash
-ros2 launch jo_navigation navigation_gps.launch.py use_sim_time:=true rviz:=true
-```
-This will require the **Global Odometry** to be up and running. This is a modified version of the local navigation stack able to correctly use the ```map``` frame published and the new odometry sources.
-
-
-<div align="center">
-  <img src="res/navigation.gif" alt="Navigation Stack" height="530"/>
-</div>
-
-
-## ROS Topics
-
-### Sensor Topics (Published by Gazebo)
-```
-/odom                           # TrackedVehicle Odometry (not working properly)
-/imu/data                       # IMU data
-/velodyne_points                # Lidar point cloud
-/front_camera/image             # Front RGB camera image
-/front_camera/camera_info       # Front camera intrinsics
-/front_camera/points            # Front camera point cloud
-/front_camera/depth             # Front depth image
-/back_camera/image              # Back RGB camera image
-/back_camera/camera_info        # Back camera intrinsics
-/back_camera/points             # Back camera point cloud
-/back_camera/depth              # Back depth image
+sim                                   # world + robot + all sensors + RViz
+sim_worlds                            # list the worlds that can be loaded by name
+teleop                                # keyboard teleop
 ```
 
-### Control Topics (Subscribed)
-```
-/cmd_vel                        # Velocity command (geometry_msgs/Twist)
-```
+#### Worlds
+Drop a `.sdf` / `.world` file (with an optional `models/` folder next to it) in `user_worlds/` and launch it by name: `sim world:=my_world`. Worlds are searched in `user_worlds/`, `jo_sim/worlds/` and the [external collection](https://github.com/leonhartyao/gazebo_models_worlds_collection.git). The world systems the robot needs (physics, sensors, RGL lidar) and `<spherical_coordinates>` are added automatically when missing. Many worlds of the external collection were made for Gazebo Classic and may not load correctly.
 
+#### Simulated sensors
+| Real sensor | Topics | Frame |
+|---|---|---|
+| Velodyne VLP-16 (RGL) | `/velodyne_points` | `velodyne` |
+| Xsens MTi | `/imu/data` | `imu_link` |
+| Xsens GNSS | `/gnss` | `imu_link` |
+| RealSense D455 front/back | `/<cam>_camera/camera/color/image_raw`, `.../color/camera_info`, `.../aligned_depth_to_color/image_raw`, `.../aligned_depth_to_color/camera_info`, `.../depth/color/points` | `<cam>_camera_color_optical_frame` (cloud: `<cam>_camera_depth_frame`) |
+| Bunker base | `/cmd_vel` (no odometry, as on the robot) | |
 
+The RealSense TF tree below `<cam>_camera_link` is published by the simulator (`driver_emulation.launch.py`), as the driver does on the robot.
 
-### Custom Worlds
-Place custom world files in `jo_description/worlds/external/worlds/`:
-```bash
-ros2 launch jo_sim launch_sim.launch.py world:=/path/to/custom.world
-```
+`sim_noise:=false` turns off all sensor noise: IMU (Xsens MTi datasheet values), GNSS (RTK, 2 cm), colour images, lidar range (added by `range_noise`, as the RGL plugin has no noise model).
 
+#### glim_ros2 development
+To test a local checkout of glim_ros2, uncomment its volume in `compose.yaml` and set `EXTRA_BUILD_PACKAGES=glim_ros` in `.env`: it is rebuilt at container start.
 
+See [PLAN.md](PLAN.md) for the roadmap.
 
 ## Additional Resources
 

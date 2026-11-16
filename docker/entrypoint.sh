@@ -3,12 +3,11 @@ set -e
 
 source /opt/ros/jazzy/setup.bash
 
+# Mounted packages (and optional dev packages such as glim_ros, see .env)
 colcon build \
-  --packages-select jo_description jo_sim jo_navigation\
-  --symlink-install \
+  --packages-select jo_description jo_sim jo_navigation ${EXTRA_BUILD_PACKAGES} \
+  --symlink-install
 
-# 3) Source overlay
 source install/setup.bash
 
-# 4) Run whatever was passed (ros2 launch ...)
 exec "$@"

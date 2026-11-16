@@ -1,0 +1,60 @@
+# Same layout as jo_bringup's dendROS.yaml (jo-zotac): the simulator takes the place of the
+# sensors group. DendROS reads only the launched package's config, so the stack groups are here too.
+groups:
+
+  sim:
+    color: blue
+    label: "SIM"
+    nodes:
+      - gz
+      - ruby
+      - gazebo
+      - create
+      - parameter_bridge
+      - image_bridge
+      - sim_*
+      - realsense_tf
+      - frame_restamp
+      - range_noise
+      - robot_state_publisher
+
+  localization:
+    color: yellow
+    label: "LOC"
+    nodes:
+      - glim_rosnode
+      - ekf_*
+      - navsat_transform_node
+      - rgbd_odometry
+      - rtabmap
+      - rtabmap_viz
+
+  navigation:
+    color: green
+    label: "NAV"
+    nodes:
+      - gps_waypoint_follower
+      - behavior_server
+      - bt_navigator
+      - controller_server
+      - lifecycle_manager_navigation
+      - planner_server
+      - smoother_server
+      - velocity_smoother
+      - waypoint_follower
+      - bt_navigator_navigate_through_poses_rclcpp_node
+      - bt_navigator_navigate_to_pose_rclcpp_node
+      - global_costmap
+      - local_costmap
+
+  viz:
+    color: magenta
+    label: "VIZ"
+    nodes:
+      - rviz2
+
+defaults:
+  color_mode: tag_only
+  show_group_tag: true
+  unmatched_color: null
+  tag_style: inverted

@@ -1,0 +1,7 @@
+# Same gz topic as back_camera/camera/color/camera_info: bridged by a separate process
+# (one bridge process subscribes each gz topic once). Depth is aligned to colour.
+- ros_topic_name: "back_camera/camera/aligned_depth_to_color/camera_info"
+  gz_topic_name: "back_camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS

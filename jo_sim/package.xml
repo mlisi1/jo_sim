@@ -1,22 +1,30 @@
 <?xml version="1.0"?>
-
 <package format="3">
 
   <name>jo_sim</name>
-  <version>1.0.13</version>
-  <description>Jo Simulation Package</description>
+  <version>2.0.0</version>
+  <description>Jo simulator: Gazebo Harmonic world, robot, sensor bridges and driver emulation</description>
 
   <license>BSD-3</license>
 
   <maintainer email="michele.lisi@phd.unipi.it">Michele Lisi</maintainer>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
 
-  <depend>robot_state_publisher</depend>
-  <depend>joint_state_publisher</depend>
-  <depend>rclpy</depend>
-  <depend>nav2_msgs</depend>
+  <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
+
+  <exec_depend>jo_description</exec_depend>
+  <exec_depend>jo_navigation</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>ros_gz_image</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>rviz2</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

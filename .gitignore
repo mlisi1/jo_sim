@@ -1,4 +1,9 @@
-jo_description/worlds/models/
-jo_description/worlds/industrial.sdf
-jo_description/worlds/vao.sdf
 .vscode/
+saved_maps/*
+bags/*
+user_worlds/*
+!saved_maps/.gitkeep
+!bags/.gitkeep
+!user_worlds/.gitkeep
+__pycache__/
+*.pyc

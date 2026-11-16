@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""Static TF tree published by realsense2_camera (publish_tf: true) below <camera>_link.
+
+On the robot these frames come from the driver, not from the URDF, so in simulation they are
+published here. Gazebo renders colour and depth from the same viewpoint (the sensor link), so the
+colour and depth frames coincide with <camera>_link.
+Parameter: cameras (list of camera names, e.g. [front_camera, back_camera]).
+"""
+import rclpy
+from geometry_msgs.msg import TransformStamped
+from rclpy.node import Node
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
+
+# quaternion (x, y, z, w) of rpy = (-pi/2, 0, -pi/2): body (X forward) -> optical (Z forward, X right)
+OPTICAL = (-0.5, 0.5, -0.5, 0.5)
+IDENTITY = (0.0, 0.0, 0.0, 1.0)
+
+
+def tf(parent, child, q):
+    t = TransformStamped()
+    t.header.frame_id = parent
+    t.child_frame_id = child
+    t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z, t.transform.rotation.w = q
+    return t
+
+
+class RealsenseTf(Node):
+    def __init__(self):
+        super().__init__('realsense_tf')
+        cameras = self.declare_parameter('cameras', ['front_camera', 'back_camera']).value
+        transforms = []
+        for cam in cameras:
+            for stream in ('color', 'depth'):
+                transforms.append(tf(f'{cam}_link', f'{cam}_{stream}_frame', IDENTITY))
+                transforms.append(tf(f'{cam}_{stream}_frame', f'{cam}_{stream}_optical_frame', OPTICAL))
+        self.broadcaster = StaticTransformBroadcaster(self)
+        self.broadcaster.sendTransform(transforms)
+        self.get_logger().info(f'published RealSense TF for {cameras}')
+
+
+def main():
+    rclpy.init()
+    rclpy.spin(RealsenseTf())
+
+
+if __name__ == '__main__':
+    main()

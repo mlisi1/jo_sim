@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+"""List the worlds jo_sim can load by name (world:=<name>)."""
+import os
+
+from jo_sim.world_tools import list_worlds, search_dirs
+
+worlds = list_worlds()
+for d in search_dirs():
+    names = sorted(n for n, p in worlds.items() if p.startswith(d + os.sep))
+    if names:
+        print(f'\n{d}')
+        for n in names:
+            print(f'  {n}')
+print(f'\n{len(worlds)} worlds. Launch with: sim world:=<name>')

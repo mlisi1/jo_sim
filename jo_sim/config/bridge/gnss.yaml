@@ -1,0 +1,6 @@
+# Xsens GNSS (real: xsens_mti_ros2_driver, pub_gnss) -> /gnss, frame imu_link
+- ros_topic_name: "gnss"
+  gz_topic_name: "gnss"
+  ros_type_name: "sensor_msgs/msg/NavSatFix"
+  gz_type_name: "gz.msgs.NavSat"
+  direction: GZ_TO_ROS

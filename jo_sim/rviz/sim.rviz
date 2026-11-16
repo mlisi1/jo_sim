@@ -253,7 +253,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /back_camera/points
+        Value: /back_camera/camera/depth/color/points
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
@@ -286,7 +286,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /front_camera/points
+        Value: /front_camera/camera/depth/color/points
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
@@ -302,7 +302,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /back_camera/image/compressed
+        Value: /back_camera/camera/color/image_raw/compressed
       Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
@@ -316,7 +316,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /front_camera/image/compressed
+        Value: /front_camera/camera/color/image_raw/compressed
       Value: true
     - Class: rviz_default_plugins/TF
       Enabled: false

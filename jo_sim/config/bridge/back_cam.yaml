@@ -1,0 +1,20 @@
+# RealSense D455 (real: realsense2_camera, namespace back_camera, node camera).
+# The colour image is bridged by ros_gz_image (see launch_sim.launch.py), the cloud is restamped
+# by frame_restamp. Gazebo renders depth from the colour viewpoint, so it is already aligned.
+- ros_topic_name: "back_camera/camera/color/camera_info"
+  gz_topic_name: "back_camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "back_camera/camera/aligned_depth_to_color/image_raw"
+  gz_topic_name: "back_camera/depth_image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "sim/back_camera/points_raw"
+  gz_topic_name: "back_camera/points"
+  ros_type_name: "sensor_msgs/msg/PointCloud2"
+  gz_type_name: "gz.msgs.PointCloudPacked"
+  direction: GZ_TO_ROS
