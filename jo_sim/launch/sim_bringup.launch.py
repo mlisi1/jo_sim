@@ -69,7 +69,10 @@ def generate_launch_description():
         *args,
         sim,
         stack('localization.launch.py', 'localization'),
-        stack('localization_gps.launch.py', 'localization_gps'),
+        # Gazebo's world is ENU and GLIM's odometry starts at the spawn heading, so the
+        # navsat_transform heading offset is the spawn yaw (the robot's 1.57 is for the Xsens)
+        stack('localization_gps.launch.py', 'localization_gps',
+              {'navsat_yaw_offset': LaunchConfiguration('yaw', default='0.0')}),
         stack('navigation_local.launch.py', 'navigation'),
         stack('navigation_gps.launch.py', 'navigation_gps'),
     ])
