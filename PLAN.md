@@ -13,7 +13,7 @@ Order: **A → DendROS/Testudo → B → C → E → F → D**.
 
 ---
 
-## Where we left off (2026-11-16)
+## Where we left off (2026-11-16, evening)
 
 Michele confirmed that `full_navigation` (GLIM) and `full_gps_navigation` both work in the sim:
 costmaps, path, footprint, clouds, GPS, and the Gazebo camera following the robot.
@@ -23,34 +23,36 @@ costmaps, path, footprint, clouds, GPS, and the Gazebo camera following the robo
 - most of Phase B (worlds)
 - Velodyne emulation (4c)
 - the session fixes listed in "Phase A follow-ups" below
+- GLIM startup investigation and GLIM config alignment (this session, see "GLIM startup" below):
+  jo_sim `5f47b80`, jo_navigation `8c027f8`, `b198fb0`
 
-**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 14, jo_navigation 7, jo_description 1.
+**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 15, jo_navigation 7, jo_description 1.
 Push the submodules first, so the superproject never points to unpushed commits.
 
 **Constraints:**
 - **jo_description:** joints and origins are the **real robot's TFs** (Michele's `88a2aac`).
   Never change them; sim-only changes go in `<gazebo>` tags.
 - **jo-zotac Docker fix:** postponed by Michele.
+- **The robot runs GLIM on the GPU only.** CPU-mode results matter little (Michele).
+- **Shared machine:** Spirula (`./build_vulkan/spirula`) also uses the GPU, and its builds use a lot of
+  RAM. Check `free -h` and `nvidia-smi` before a test batch; the host got close to OOM twice this session.
 
 ### Next session checklist
-1. **GLIM startup divergence: not reproduced (2026-11-16).** 34/34 headless starts clean (office_cpr,
-   localization / full stack / GPS mode, glim_ros2 `50f7670` and `5c89eaa`), GLIM within ~1 cm of
-   ground truth. The glim_ros2 session saw 30/30 clean cold starts on the testudo bag.
-   - Found and fixed: the robot is spawned at z 0.6 and drops ~0.15 m, so the IMU read ~0 for
-     ~0.17 s inside GLIM's init window (init v_z -0.06 m/s). velodyne_emulation now holds back
-     clouds for `startup_hold` (2 s sim time): init v_z -0.005, 8/8 clean.
-   - If Michele sees it again: note world, GUI/RViz, and keep the launch log (GLIM init lines).
-   - Robot config `glim_config_bunker` (GPU, downsample 0.2) in sim: 8/8 clean, ~10 Hz, also with
-     Spirula sharing the GPU (84-99 % utilization).
-   - Missing GLIM keys (`compute_covs`, `ring_field`, `image_topic: ""`, `anchor_frame: base`,
-     `enable_cropbox_filter`, `validate_imu`, `config_logging`, `submap_target_num_points`):
-     **to discuss with Michele.** `compute_covs` makes GLIM's variances ~30x smaller, so the EKF
-     odom0 tuning must be checked (glim_ros2 session, testudo bag).
-2. **Robot GLIM `T_lidar_imu`: done.** Michele chose the URDF value (-0.0514, 0, -0.3753) with no
-   rotation (the old 2.3 deg roll is dropped). Untested on the robot. The sim config now uses the
-   robot's keyframe / sub-mapping values; the remaining differences are commented in the files.
+1. **Ask Michele about the missing GLIM keys** (he said "later"). These are not in either jo_navigation
+   GLIM config, so GLIM uses defaults: `odometry_estimation/compute_covs`, `sensors/ring_field: ring`,
+   `glim_ros/image_topic: ""`, `glim_ros/anchor_frame: base`, `preprocess/enable_cropbox_filter`,
+   `odometry_estimation/validate_imu`, `global/config_logging`, `sub_mapping/submap_target_num_points`.
+   - `compute_covs` makes GLIM's reported variances ~30x smaller (glim_ros2 session, testudo bag: pos
+     3.3e-4 m², rot 1.6e-4 rad²), so the EKF trusts GLIM much more: check the `odom0` tuning in
+     `localization*.yaml` with it.
+   - `image_topic: ""` removes the image subscription (no module uses images).
+   - `anchor_frame: base` puts the map/odom origin at the initial base pose instead of the IMU.
+2. **GPU check on the real data (glim_ros2 session, waiting for Michele's go-ahead):** the robot's
+   `glim_config_bunker` with GPU GLIM on the testudo bag, in a throwaway container from the jo-sim image.
+   It needs several GiB of RAM and the GPU: run it only when Spirula is not building.
 3. **Push when asked:** jo_description, then jo_navigation, then jo_sim.
    - Remove the branch `backup/dev-before-rebase` in jo_description once the push is fine.
+   - The robot `T_lidar_imu` change (jo_navigation `8c027f8`) is untested on the robot.
 4. **Remaining plan items:**
    - RTAB-Map build check (`BUILD_RTABMAP=true`)
    - Testudo
@@ -58,6 +60,54 @@ Push the submodules first, so the superproject never points to unpushed commits.
    - Phase B leftovers: sensor-topic check in `check_worlds`, per-world sidecar yaml
    - Phases C, E, F
    - D3 obstacles and track re-tuning
+
+**Container state** (`jo_sim-jo-sim-1`, image built ~2026-11-16 morning):
+- The **image** contains glim_ros2 `50f7670`. Inside the running container `~/src/glim_ros2` is checked out
+  at `5c89eaa` (current `dev`) and rebuilt. A new container, or a container rebuilt without
+  `--no-cache`, starts again from `50f7670`: check out `5c89eaa` and run
+  `colcon build --symlink-install --packages-select glim_ros`, or rebuild the image.
+- The container is built with the `startup_hold` change (jo_sim `5f47b80`).
+- Test leftovers: `/tmp/scratch` (probe scripts) and `/tmp/glimrep` (logs, probe json) in the container.
+  They are lost when the container is recreated; the harness is described under "GLIM startup" below.
+
+### GLIM startup (2026-11-16)
+- **The "1 start in 4" divergence did not reproduce:** 34/34 headless starts clean in office_cpr,
+  across localization only, the full stack (2 RealSense + Nav2) and GPS mode, with glim_ros2 `50f7670`
+  and `5c89eaa`. GLIM displacement was within ~1 cm of ground truth (about 2.5 m drive with
+  `/cmd_vel`, compared with `gz model -m jo -p`).
+  The glim_ros2 session saw 30/30 clean cold starts on the testudo bag (fork and upstream).
+  If Michele sees it again: note the world and whether the GUI or RViz were open, and keep the
+  launch log (GLIM `initial IMU state estimation result` lines).
+- **Found and fixed:** the robot spawns at z 0.6 and rests at 0.454, so it free-falls ~0.17 s and the
+  IMU reads ~0 inside GLIM's init window. LOOSE init then estimated v_z -0.06 m/s and a 4 cm z offset.
+  `velodyne_emulation` now drops clouds for `startup_hold` (default 2 s, sim time) after the first
+  one, so GLIM initializes at rest, as on the robot (the VLP-16 also needs seconds to spin up).
+  Result: init v_z -0.005 and z ~0, 8/8 clean. The spawn z was left at 0.6: heightmap worlds need
+  the clearance.
+- **Robot config in the sim:** `glim_config_bunker` (GPU, downsample 0.2, new `T_lidar_imu`) was
+  8/8 clean at ~10 Hz, with Spirula sharing the GPU at 84-99 % utilization.
+- **Robot `T_lidar_imu`:** Michele chose the URDF value (-0.0514, 0, -0.3753) with **no rotation**.
+  The old (0.192, -0.003, -0.318) with 2.3 deg roll came from the old URDF.
+- **The sim GLIM config** uses the robot values except where the sim needs otherwise:
+  - IMU noise is matched to sim_noise.xacro.
+  - `global_shutter_lidar: true`, because the RGL sweep is instantaneous.
+  - `downsample_resolution` is 1.0, lighter with Gazebo on the GPU.
+  These differences are commented in the files.
+- **Ruled out by the glim_ros2 session:**
+  - The fork's output side (anchor_frame, publishing thread) can't affect the estimate.
+  - `acc_scale` is explicitly 1.0, so the unit isn't guessed from a free-fall sample.
+  - Velodyne per-point times are handled correctly by GLIM 1a197c9, with no config change.
+  - `downsample_resolution` 0.2 tracks badly with **CPU** GLIM on the testudo bag. That doesn't
+    matter for the robot, which runs on the GPU.
+- **Jazzy `ros2 run` does not forward SIGINT** to the node: signalling only its PID leaves
+  glim_rosnode orphaned (this filled the RAM this session). `ros2 launch`, or a process-group
+  signal, is fine. jo-zotac starts GLIM only through `ros2 launch` (checked).
+- **Test harness:** `run.sh <idx> [launch args]` + `probe.py` in the container's `/tmp/scratch`.
+  It waits 45 s, records `/imu/data` and `/glim_ros/odometry/local`, drives 6 s at 0.5 m/s, and
+  compares with `gz model -m jo -p`. Parse the 3-number pose line: the output also has `[10]` (the
+  model id).
+  - Batches launched with `docker exec` keep running inside the container when the client is
+    killed: kill them inside the container.
 
 **Commands** (inside the container: `docker compose exec jo-sim bash`):
 - `full_navigation` / `full_gps_navigation` (aliases; extra args are appended, e.g. `world:=small_city`)
@@ -70,7 +120,7 @@ Push the submodules first, so the superproject never points to unpushed commits.
 - `pkill -f "gz sim"` kills its own shell.
 - Xvfb for GUI tests is installed only in the running container (lost on rebuild).
 
-**Background jobs:** none running.
+**Background jobs:** none running (2026-11-16 evening). No sim or GLIM process on the host.
 
 ---
 

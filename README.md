@@ -108,6 +108,8 @@ The RealSense TF tree below `<cam>_camera_link` is published by the simulator (`
 
 `sim_noise:=false` turns off all sensor noise: IMU (Xsens MTi datasheet values), GNSS (RTK, 2 cm), colour images, lidar range (added by `velodyne_emulation`, as the RGL plugin has no noise model).
 
+The Velodyne emulation holds back the lidar for the first 2 s of sim time (`startup_hold` parameter of `velodyne_emulation`): the robot is spawned slightly above the ground and drops, and GLIM must initialize with the robot at rest.
+
 GPS localization in the sim:
 - **Heading:** the sim passes the spawn `yaw` to navsat_transform as `navsat_yaw_offset`. Gazebo is
   east-north-up; the robot's 1.57 is for the Xsens, whose yaw reads 0 at north.
