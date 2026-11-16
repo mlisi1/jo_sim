@@ -12,6 +12,8 @@
   - other ``model://`` includes not found locally are downloaded from Gazebo Fuel (OpenRobotics hosts
     the Classic model database, names with spaces) into MODEL_CACHE under their Classic name, with
     their dependencies, or dropped with a warning if unavailable;
+  - Ogre material scripts (ignored by Harmonic: untextured models) are converted to PBR texture
+    maps, in the world and in converted copies of the models it uses;
   - duplicate top-level model names (an error in Harmonic) are made unique.
 """
 import io
@@ -39,6 +41,8 @@ MODEL_CACHE = os.path.join(CACHE_DIR, 'models')
 STATUS_FILE = os.path.join(CACHE_DIR, 'world_status.json')
 # Gazebo Classic shipped textures in its media folder (used by heightmaps as file://media/...)
 CLASSIC_MEDIA_URL = 'https://raw.githubusercontent.com/gazebosim/gazebo-classic/gazebo11/'
+# Copies of models whose Ogre material scripts were converted to PBR (first on the resource path)
+CONVERTED_MODELS = os.path.join(CACHE_DIR, 'converted_models')
 
 SUN = '''<light type="directional" name="sun">
   <cast_shadows>true</cast_shadows><pose>0 0 10 0 0 0</pose>
@@ -102,8 +106,9 @@ def resolve_world(world):
 
 def resource_dirs(world_path):
     """Directories to add to GZ_SIM_RESOURCE_PATH for this world (models next to it, etc.)."""
+    os.makedirs(CONVERTED_MODELS, exist_ok=True)
     d = os.path.dirname(world_path)
-    candidates = [d, os.path.join(d, 'models'), os.path.join(os.path.dirname(d), 'models')]
+    candidates = [CONVERTED_MODELS, d, os.path.join(d, 'models'), os.path.join(os.path.dirname(d), 'models')]
     candidates += search_dirs()
     candidates += [os.path.join(s, 'models') for s in search_dirs()]
     candidates += [MODEL_CACHE, os.path.join(CACHE_DIR, 'classic')]
@@ -281,6 +286,136 @@ def _fetch_classic_media(world, dirs, changes):
             changes.append(f'WARNING Classic texture {rel} not available')
 
 
+def _resolve_uri(uri, dirs, base):
+    """model://X/sub, file://path or relative path -> local path (or None)."""
+    uri = (uri or '').strip()
+    if uri.startswith('model://'):
+        rest = uri[len('model://'):]
+        name, _, sub = rest.partition('/')
+        for d in dirs:
+            if d != CONVERTED_MODELS and os.path.isdir(os.path.join(d, name)):
+                return os.path.join(d, name, sub)
+        return None
+    if uri.startswith('file://'):
+        uri = uri[len('file://'):]
+    path = uri if os.path.isabs(uri) else os.path.join(base, uri)
+    return path if os.path.exists(path) else None
+
+
+def _ogre_materials(script_dirs):
+    """Parse the .material files: name -> {'texture': file, 'normal': file, 'diffuse': 'r g b'}."""
+    out = {}
+    for d in script_dirs:
+        files = [d] if os.path.isfile(d) else [
+            os.path.join(r, f) for r, _, fs in os.walk(d) for f in fs if f.endswith('.material')]
+        for path in files:
+            with open(path, errors='replace') as f:
+                text = re.sub(r'//[^\n]*', '', f.read())
+            for m in re.finditer(r'^\s*material\s+(\S+)[^{]*\{', text, re.M):
+                depth, i = 1, m.end()
+                while depth and i < len(text):
+                    depth += {'{': 1, '}': -1}.get(text[i], 0)
+                    i += 1
+                block = text[m.end():i]
+                info = {}
+                t = re.search(r'^\s*texture\s+(\S+)', block, re.M)
+                if t:
+                    info['texture'] = t.group(1)
+                n = re.search(r'normal_map\s+(\S+)', block)
+                if n:
+                    info['normal'] = n.group(1)
+                c = re.search(r'^\s*diffuse\s+([-\d.]+\s+[-\d.]+\s+[-\d.]+)', block, re.M)
+                if c:
+                    info['diffuse'] = c.group(1)
+                out.setdefault(m.group(1), info)
+    return out
+
+
+def _find_file(name, search):
+    for d in search:
+        if os.path.isfile(d):
+            d = os.path.dirname(d)
+        for root, _, files in os.walk(d):
+            if name in files:
+                return os.path.join(root, name)
+    return None
+
+
+def _convert_scripts(root, dirs, base, model_dir=None):
+    """Replace <material><script> (Ogre, ignored by Harmonic) with PBR maps. Returns the count."""
+    count = 0
+    for mat in root.iter('material'):
+        script = mat.find('script')
+        if script is None:
+            continue
+        name = (script.findtext('name') or '').strip()
+        if name.startswith('Gazebo/'):
+            continue  # built-in Classic colours: Harmonic maps them itself
+        locs = [p for p in (_resolve_uri(u.text, dirs, base) for u in script.findall('uri')) if p]
+        info = _ogre_materials(locs).get(name)
+        if info is None:
+            continue
+        search = locs + ([model_dir] if model_dir else [])
+        tex = _find_file(info['texture'], search) if 'texture' in info else None
+        if tex is None and 'diffuse' not in info:
+            continue
+        mat.remove(script)
+        if tex:
+            for tag in ('ambient', 'diffuse'):
+                if mat.find(tag) is None:
+                    ET.SubElement(mat, tag).text = '1 1 1 1'
+            metal = ET.SubElement(ET.SubElement(mat, 'pbr'), 'metal')
+            ET.SubElement(metal, 'albedo_map').text = tex
+            normal = _find_file(info['normal'], search) if 'normal' in info else None
+            if normal:
+                ET.SubElement(metal, 'normal_map').text = normal
+        else:
+            for tag in ('ambient', 'diffuse'):
+                if mat.find(tag) is None:
+                    ET.SubElement(mat, tag).text = info['diffuse'] + ' 1'
+        count += 1
+    return count
+
+
+def _convert_models(world, dirs, changes):
+    """Ogre material scripts -> PBR, in the world and in the models it uses (converted copies of
+    those are written to CONVERTED_MODELS, the other files of the model are linked)."""
+    n = _convert_scripts(world, dirs, os.getcwd())
+    if n:
+        changes.append(f'converted {n} Ogre material scripts in the world')
+    todo = {m.group(1) for u in world.iter('uri')
+            for m in [re.match(r'\s*model://([^/<\s]+)', u.text or '')] if m}
+    done = set()
+    while todo:
+        name = todo.pop()
+        done.add(name)
+        src = next((os.path.join(d, name) for d in dirs
+                    if d != CONVERTED_MODELS and os.path.isfile(os.path.join(d, name, 'model.sdf'))), None)
+        if src is None:
+            continue
+        sdf = os.path.join(src, 'model.sdf')
+        with open(sdf, errors='replace') as f:
+            text = f.read()
+        todo |= set(re.findall(r'model://([A-Za-z0-9_\- ]+)', text)) - done
+        dst = os.path.join(CONVERTED_MODELS, name)
+        if '<script>' not in text:
+            continue
+        try:
+            tree = ET.parse(sdf)
+        except ET.ParseError:
+            continue
+        n = _convert_scripts(tree.getroot(), dirs, src, src)
+        if not n:
+            continue
+        os.makedirs(dst, exist_ok=True)
+        for entry in os.listdir(src):
+            link = os.path.join(dst, entry)
+            if entry != 'model.sdf' and not os.path.lexists(link):
+                os.symlink(os.path.realpath(os.path.join(src, entry)), link)
+        tree.write(os.path.join(dst, 'model.sdf'))
+        changes.append(f'model {name}: {n} Ogre material scripts converted to PBR')
+
+
 def _unique_names(world, changes):
     seen = {}
     for elem in world:
@@ -364,6 +499,7 @@ def prepare_world(world_path, latitude, longitude, elevation=0.0, out_dir=OUT_DI
 
     _fix_includes(world, local_models(resource_dirs(world_path)), changes)
     _fetch_classic_media(world, resource_dirs(world_path), changes)
+    _convert_models(world, resource_dirs(world_path), changes)
     _unique_names(world, changes)
 
     os.makedirs(out_dir, exist_ok=True)

@@ -85,7 +85,7 @@ teleop                                # keyboard teleop
 #### Worlds
 Drop a `.sdf` / `.world` file (with an optional `models/` folder next to it) in `user_worlds/` and launch it by name: `sim world:=my_world`. Worlds are searched in `user_worlds/`, `jo_sim/worlds/` and the [external collection](https://github.com/leonhartyao/gazebo_models_worlds_collection.git). The world is patched automatically (a copy in `/tmp/jo_sim/worlds`, the original is not touched):
 - the world systems the robot needs (physics, sensors, RGL lidar) and `<spherical_coordinates>` are added when missing;
-- Gazebo Classic worlds: `model://sun` / `model://ground_plane` are written inline, models that are not available locally are downloaded from [Gazebo Fuel](https://app.gazebosim.org/OpenRobotics) on first use (with their dependencies, into `user_worlds/.cache/models`), duplicate model names are made unique.
+- Gazebo Classic worlds: `model://sun` / `model://ground_plane` are written inline, models that are not available locally are downloaded from [Gazebo Fuel](https://app.gazebosim.org/OpenRobotics) on first use (with their dependencies, into `user_worlds/.cache/models`), Ogre material scripts (ignored by Harmonic, models would be untextured) are converted to PBR textures in copies of the models (`user_worlds/.cache/converted_models`), duplicate model names are made unique.
 
 Loading is not enough: some Classic worlds run far below real time in Harmonic (e.g. `warehouse`, RTF ≈ 0.003: stacked dynamic boxes on mesh shelves). Test them once with
 ```bash
