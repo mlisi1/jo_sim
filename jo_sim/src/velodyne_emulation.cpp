@@ -10,9 +10,14 @@
 //   p' = p * (r + n) / r, n ~ N(0, range_stddev); 0 disables it.
 // * points outside [min_range, max_range] are dropped. The cloud is unorganized (height 1), the
 //   real driver organizes it by ring (organize_cloud: true): consumers in our stack do not care.
+// * clouds are held back for startup_hold seconds (sim time) after the first one. The robot is
+//   spawned above the ground and drops and settles for a fraction of a second; GLIM's initial state
+//   estimation assumes the robot is at rest, as on the real robot (where the VLP-16 also needs a few
+//   seconds to spin up), and the drop gives it a wrong initial velocity. 0 disables it.
 //
 // Topics: input -> output (remap them). Parameters: range_stddev [m], min_range, max_range,
-// vertical_fov_min_deg, vertical_step_deg, rings, seed.
+// vertical_fov_min_deg, vertical_step_deg, rings, seed,
+// startup_hold [s].
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -38,6 +43,7 @@ public:
     fov_min_(declare_parameter<double>("vertical_fov_min_deg", -15.0)),
     step_(declare_parameter<double>("vertical_step_deg", 2.0)),
     rings_(declare_parameter<int>("rings", 16)),
+    hold_(declare_parameter<double>("startup_hold", 2.0)),
     rng_(static_cast<std::mt19937::result_type>(declare_parameter<int>("seed", 0))),
     dist_(0.0, stddev_ > 0.0 ? stddev_ : 1.0)
   {
@@ -71,6 +77,13 @@ private:
 
   void convert(const PointCloud2 & in)
   {
+    const double stamp = rclcpp::Time(in.header.stamp).seconds();
+    if (first_stamp_ < 0.0) {
+      first_stamp_ = stamp;
+    }
+    if (stamp - first_stamp_ < hold_) {
+      return;
+    }
     const int ox = offset(in, "x"), oy = offset(in, "y"), oz = offset(in, "z");
     const int oi = offset(in, "intensity");
     if (ox < 0 || oy < 0 || oz < 0) {
@@ -135,6 +148,7 @@ private:
 
   double stddev_, min_range_, max_range_, fov_min_, step_;
   int rings_;
+  double hold_, first_stamp_ = -1.0;
   std::mt19937 rng_;
   std::normal_distribution<double> dist_;
   rclcpp::Publisher<PointCloud2>::SharedPtr pub_;

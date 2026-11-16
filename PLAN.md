@@ -24,7 +24,7 @@ costmaps, path, footprint, clouds, GPS, and the Gazebo camera following the robo
 - Velodyne emulation (4c)
 - the session fixes listed in "Phase A follow-ups" below
 
-**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 13, jo_navigation 6, jo_description 1.
+**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 14, jo_navigation 7, jo_description 1.
 Push the submodules first, so the superproject never points to unpushed commits.
 
 **Constraints:**
@@ -33,15 +33,22 @@ Push the submodules first, so the superproject never points to unpushed commits.
 - **jo-zotac Docker fix:** postponed by Michele.
 
 ### Next session checklist
-1. **GLIM startup divergence.** About 1 start in 4, GLIM odometry jumps at init (e.g. to (-1.49, -0.81,
-   -0.45)) and stops tracking. This is probably the "full_navigation either works or doesn't".
-   - Reproduce headless several times: office_cpr, drive 3 m with `/cmd_vel`, compare with `gz model -m jo -p`.
-   - Look at IMU init / the first frames.
-   - Consider the missing GLIM config keys (`sensors/ring_field: ring` now that the cloud has rings,
-     `glim_ros/ang_scale`).
-2. **Ask Michele about the robot's GLIM config.** `glim_config_bunker` `T_lidar_imu` is still
-   (0.192, -0.003, -0.318), taken from the old URDF. The new URDF gives (-0.0514, 0, -0.3753).
-   Do not change it without his decision.
+1. **GLIM startup divergence: not reproduced (2026-11-16).** 34/34 headless starts clean (office_cpr,
+   localization / full stack / GPS mode, glim_ros2 `50f7670` and `5c89eaa`), GLIM within ~1 cm of
+   ground truth. The glim_ros2 session saw 30/30 clean cold starts on the testudo bag.
+   - Found and fixed: the robot is spawned at z 0.6 and drops ~0.15 m, so the IMU read ~0 for
+     ~0.17 s inside GLIM's init window (init v_z -0.06 m/s). velodyne_emulation now holds back
+     clouds for `startup_hold` (2 s sim time): init v_z -0.005, 8/8 clean.
+   - If Michele sees it again: note world, GUI/RViz, and keep the launch log (GLIM init lines).
+   - Robot config `glim_config_bunker` (GPU, downsample 0.2) in sim: 8/8 clean, ~10 Hz, also with
+     Spirula sharing the GPU (84-99 % utilization).
+   - Missing GLIM keys (`compute_covs`, `ring_field`, `image_topic: ""`, `anchor_frame: base`,
+     `enable_cropbox_filter`, `validate_imu`, `config_logging`, `submap_target_num_points`):
+     **to discuss with Michele.** `compute_covs` makes GLIM's variances ~30x smaller, so the EKF
+     odom0 tuning must be checked (glim_ros2 session, testudo bag).
+2. **Robot GLIM `T_lidar_imu`: done.** Michele chose the URDF value (-0.0514, 0, -0.3753) with no
+   rotation (the old 2.3 deg roll is dropped). Untested on the robot. The sim config now uses the
+   robot's keyframe / sub-mapping values; the remaining differences are commented in the files.
 3. **Push when asked:** jo_description, then jo_navigation, then jo_sim.
    - Remove the branch `backup/dev-before-rebase` in jo_description once the push is fine.
 4. **Remaining plan items:**
