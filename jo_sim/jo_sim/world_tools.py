@@ -14,6 +14,9 @@
     their dependencies, or dropped with a warning if unavailable;
   - Ogre material scripts (ignored by Harmonic: untextured models) are converted to PBR texture
     maps, in the world and in converted copies of the models it uses;
+  - visual heightmaps are rescaled to the heights Gazebo Classic gave them;
+  - Classic (SDF <= 1.6) worlds: <road> drawn as asphalt strips, ambient-only materials get Classic's
+    white diffuse;
   - duplicate top-level model names (an error in Harmonic) are made unique.
 """
 import io
@@ -324,9 +327,13 @@ def _ogre_materials(script_dirs):
                 n = re.search(r'normal_map\s+(\S+)', block)
                 if n:
                     info['normal'] = n.group(1)
-                c = re.search(r'^\s*diffuse\s+([-\d.]+\s+[-\d.]+\s+[-\d.]+)', block, re.M)
+                c = re.search(r'^\s*diffuse\s+([-\d.]+\s+[-\d.]+\s+[-\d.]+)(\s+[-\d.]+)?', block, re.M)
                 if c:
                     info['diffuse'] = c.group(1)
+                    if c.group(2):
+                        info['alpha'] = float(c.group(2))
+                if re.search(r'scene_blend\s+alpha_blend', block):
+                    info['blend'] = True
                 out.setdefault(m.group(1), info)
     return out
 
@@ -357,9 +364,17 @@ def _convert_scripts(root, dirs, base, model_dir=None):
             continue
         search = locs + ([model_dir] if model_dir else [])
         tex = _find_file(info['texture'], search) if 'texture' in info else None
-        if tex is None and 'diffuse' not in info:
+        if tex is None and 'diffuse' not in info and not info.get('blend'):
             continue
         mat.remove(script)
+        if info.get('blend'):
+            # Classic alpha-blended material (water, glass): keep it see-through. A shader-only one
+            # (e.g. ocean waves) has no colour: use a water blue.
+            visual = next((v for v in root.iter('visual') if mat in list(v)), None)
+            if visual is not None and visual.find('transparency') is None:
+                ET.SubElement(visual, 'transparency').text = f"{1.0 - info.get('alpha', 0.4):g}"
+            if tex is None and 'diffuse' not in info:
+                info['diffuse'] = '0.2 0.45 0.6'
         if tex:
             for tag in ('ambient', 'diffuse'):
                 if mat.find(tag) is None:
@@ -377,12 +392,49 @@ def _convert_scripts(root, dirs, base, model_dir=None):
     return count
 
 
+def _image_max(path):
+    """Brightest value of a heightmap image and the format maximum (255 / 65535), or None."""
+    try:
+        from PIL import Image
+        import numpy as np
+        img = Image.open(path)
+        a = np.asarray(img.convert('I') if img.mode in ('I;16', 'I') else img.convert('L'))
+        return float(a.max()), 65535.0 if img.mode in ('I;16', 'I') else 255.0
+    except Exception:  # PIL missing, unreadable image, ...
+        return None
+
+
+def _fix_heightmaps(root, dirs, base):
+    """Visual heightmaps at the heights Gazebo Classic gave them. Classic: z = pixel / 255 * size.z
+    + pos.z; Harmonic's renderer: z = pixel / brightest pixel * size.z + pos.z (measured on
+    small_city, terrain 2.5 m above the streets). size.z is rescaled by brightest / 255.
+    Collision heightmaps are not touched."""
+    count = 0
+    for link in root.iter('link'):
+        for vis in link.findall('visual'):
+            hm = vis.find('geometry/heightmap')
+            if hm is None:
+                continue
+            path = _resolve_uri(hm.findtext('uri'), dirs, base)
+            m = _image_max(path) if path else None
+            size = (hm.findtext('size') or '1 1 1').split()
+            if m is None or m[0] <= 0 or len(size) < 3:
+                continue
+            size[2] = f'{float(size[2]) * m[0] / m[1]:g}'
+            hm.find('size').text = ' '.join(size)
+            count += 1
+    return count
+
+
 def _convert_models(world, dirs, changes):
     """Ogre material scripts -> PBR, in the world and in the models it uses (converted copies of
     those are written to CONVERTED_MODELS, the other files of the model are linked)."""
     n = _convert_scripts(world, dirs, os.getcwd())
     if n:
         changes.append(f'converted {n} Ogre material scripts in the world')
+    n = _fix_heightmaps(world, dirs, os.getcwd())
+    if n:
+        changes.append(f'{n} heightmaps in the world adjusted to Classic heights')
     todo = {m.group(1) for u in world.iter('uri')
             for m in [re.match(r'\s*model://([^/<\s]+)', u.text or '')] if m}
     done = set()
@@ -398,14 +450,15 @@ def _convert_models(world, dirs, changes):
             text = f.read()
         todo |= set(re.findall(r'model://([A-Za-z0-9_\- ]+)', text)) - done
         dst = os.path.join(CONVERTED_MODELS, name)
-        if '<script>' not in text:
+        if '<script>' not in text and '<heightmap>' not in text:
             continue
         try:
             tree = ET.parse(sdf)
         except ET.ParseError:
             continue
         n = _convert_scripts(tree.getroot(), dirs, src, src)
-        if not n:
+        h = _fix_heightmaps(tree.getroot(), dirs, src)
+        if not n and not h:
             continue
         os.makedirs(dst, exist_ok=True)
         for entry in os.listdir(src):
@@ -413,7 +466,57 @@ def _convert_models(world, dirs, changes):
             if entry != 'model.sdf' and not os.path.lexists(link):
                 os.symlink(os.path.realpath(os.path.join(src, entry)), link)
         tree.write(os.path.join(dst, 'model.sdf'))
-        changes.append(f'model {name}: {n} Ogre material scripts converted to PBR')
+        if n:
+            changes.append(f'model {name}: {n} Ogre material scripts converted to PBR')
+        if h:
+            changes.append(f'model {name}: {h} heightmaps adjusted to Classic heights')
+
+
+def _convert_roads(world, changes):
+    """Classic <road> (not drawn by Harmonic) -> a static model with one flat asphalt strip per
+    segment, visual only like in Classic."""
+    import math
+    roads = world.findall('road')
+    for road in roads:
+        width = float(road.findtext('width') or 1.0)
+        pts = [[float(v) for v in p.text.split()] for p in road.findall('point') if p.text]
+        model = ET.Element('model', name=road.get('name', 'road'))
+        ET.SubElement(model, 'static').text = 'true'
+        link = ET.SubElement(model, 'link', name='link')
+        for i, (a, b) in enumerate(zip(pts, pts[1:])):
+            a, b = (a + [0.0])[:3], (b + [0.0])[:3]
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            length = math.hypot(dx, dy)
+            if length < 1e-6:
+                continue
+            vis = ET.SubElement(link, 'visual', name=f'segment_{i}')
+            # extend by half the width so consecutive segments overlap at the corners
+            ET.SubElement(vis, 'pose').text = (f'{(a[0] + b[0]) / 2} {(a[1] + b[1]) / 2} '
+                                               f'{(a[2] + b[2]) / 2} 0 0 {math.atan2(dy, dx)}')
+            # top 5 cm above the road points: Classic drew roads over coplanar terrain, Harmonic
+            # would hide them under a heightmap at the same height
+            ET.SubElement(ET.SubElement(ET.SubElement(vis, 'geometry'), 'box'), 'size').text = \
+                f'{length + width} {width} 0.1'
+            mat = ET.SubElement(vis, 'material')
+            ET.SubElement(mat, 'ambient').text = '0.25 0.25 0.25 1'
+            ET.SubElement(mat, 'diffuse').text = '0.25 0.25 0.25 1'
+        world.insert(list(world).index(road), model)
+        world.remove(road)
+    if roads:
+        changes.append(f'{len(roads)} Classic <road> elements drawn as asphalt strips')
+
+
+def _classic_default_diffuse(world, changes):
+    """Classic kept the Ogre default (white) diffuse when a material gave only <ambient>; Harmonic
+    uses the SDF default (black): such visuals turned black (e.g. small_city sidewalks)."""
+    n = 0
+    for mat in world.iter('material'):
+        if mat.find('ambient') is not None and mat.find('diffuse') is None \
+                and mat.find('script') is None and mat.find('pbr') is None:
+            ET.SubElement(mat, 'diffuse').text = '1 1 1 1'
+            n += 1
+    if n:
+        changes.append(f'{n} ambient-only materials given the Classic white diffuse')
 
 
 def _unique_names(world, changes):
@@ -500,6 +603,9 @@ def prepare_world(world_path, latitude, longitude, elevation=0.0, out_dir=OUT_DI
     _fix_includes(world, local_models(resource_dirs(world_path)), changes)
     _fetch_classic_media(world, resource_dirs(world_path), changes)
     _convert_models(world, resource_dirs(world_path), changes)
+    if tuple(int(v) for v in re.findall(r'\d+', root.get('version', '1.9'))[:2]) <= (1, 6):
+        _convert_roads(world, changes)
+        _classic_default_diffuse(world, changes)
     _unique_names(world, changes)
 
     os.makedirs(out_dir, exist_ok=True)
