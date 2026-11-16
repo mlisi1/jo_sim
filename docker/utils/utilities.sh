@@ -1,5 +1,12 @@
 # Sourced from ~/.bashrc. Mounted at runtime: edit without rebuilding the image.
 source /opt/ros/jazzy/setup.bash
+
+# The entrypoint builds the mounted packages at container start: wait for it before sourcing
+if [ ! -f /tmp/jo_sim_ready ]; then
+  echo -n "[jo_sim] waiting for the workspace build to finish"
+  for _ in $(seq 1 600); do [ -f /tmp/jo_sim_ready ] && break; echo -n "."; sleep 1; done
+  echo
+fi
 source /home/ros/install/setup.bash
 source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash
 

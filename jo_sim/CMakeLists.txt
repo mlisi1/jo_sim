@@ -25,8 +25,20 @@ install(
 )
 
 install(
-  DIRECTORY config launch worlds rviz
+  DIRECTORY config launch rviz
   DESTINATION share/${PROJECT_NAME}
 )
+
+# Built-in worlds; the external collection (thousands of files) is installed as one symlink
+install(
+  DIRECTORY worlds
+  DESTINATION share/${PROJECT_NAME}
+  PATTERN "external" EXCLUDE
+)
+install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E rm -rf
+  \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/worlds/external)")
+install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+  ${CMAKE_CURRENT_SOURCE_DIR}/worlds/external
+  \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/worlds/external)")
 
 ament_package()
