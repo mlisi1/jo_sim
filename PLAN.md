@@ -57,7 +57,12 @@ Order: **A → DendROS/Testudo → B → C → E → F → D**.
    falls back to `visodom:=false` when it is not installed), DendROS latest release,
    all clones pinned through build args.
 4b. **Sensor noise switch** `sim_noise:=true|false` (xacro arg in jo_description, `<gazebo>`-only;
-   lidar noise by jo_sim `range_noise`).
+   lidar noise by jo_sim `velodyne_emulation`).
+4c. **Velodyne driver emulation** (2026-11-16): `velodyne_emulation` publishes `/velodyne_points` with the
+   driver's fields (x y z intensity ring time, ring from elevation, time 0 as the sim sweep is
+   instantaneous) and range limits (0.9–130 m); the real `velodyne_laserscan_node` publishes `/scan`
+   (Nav2 costmaps), as `velodyne-all-nodes-VLP16-launch.py` does on the robot. Before this, `/scan`
+   did not exist in sim, so the costmaps had no obstacles. Cloud unorganized (robot: organized by ring).
 5. **Fix existing bugs**: `GZ_SIM_SYSTEM_PLUGIN_PATH=/opt/ros/humble/lib`, env vars expanded at
    build time (clobbered), README paths.
 6. **Same launch flags as the robot**: `sim_bringup.launch.py` accepts the `jo_bringup` flags

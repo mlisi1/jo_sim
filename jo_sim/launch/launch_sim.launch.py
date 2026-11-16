@@ -26,8 +26,9 @@ PKG = 'jo_sim'
 IMAGE_TRANSPORTS = ('', '/compressed', '/compressedDepth', '/theora', '/zstd')
 
 # Sensor flag -> bridge config files (config/bridge/)
-# The lidar is handled separately (lidar_actions): its bridge depends on sim_noise
+# The lidar cloud is bridged to /sim/velodyne_points_raw, driver_emulation publishes /velodyne_points
 SENSOR_BRIDGES = {
+    'lidar': ['lidar_raw.yaml'],
     'imu': ['imu.yaml'],
     'gnss': ['gnss.yaml'],
     'front_cam': ['front_cam.yaml', 'front_cam_depth_info.yaml'],
@@ -44,22 +45,6 @@ def bridge(name, config, condition=None):
         parameters=[{'config_file': config, 'use_sim_time': True}],
         condition=condition,
     )
-
-
-def lidar_actions(context, bridge_dir):
-    if LaunchConfiguration('lidar').perform(context).lower() not in ('true', '1'):
-        return []
-    if LaunchConfiguration('sim_noise').perform(context).lower() not in ('true', '1'):
-        return [bridge('sim_bridge_lidar', os.path.join(bridge_dir, 'lidar.yaml'))]
-    return [
-        bridge('sim_bridge_lidar', os.path.join(bridge_dir, 'lidar_raw.yaml')),
-        Node(
-            package='jo_sim', executable='range_noise', name='sim_lidar_noise',
-            parameters=[{'range_stddev': float(LaunchConfiguration('lidar_range_stddev').perform(context)),
-                         'use_sim_time': True}],
-            remappings=[('input', '/sim/velodyne_points_raw'), ('output', '/velodyne_points')],
-        ),
-    ]
 
 
 def world_and_gazebo(context):
@@ -107,7 +92,7 @@ def generate_launch_description():
         DeclareLaunchArgument('elevation', default_value='0.0'),
     ]
     args += [DeclareLaunchArgument(s, default_value='true', description=f'Publish the {s} topics')
-             for s in ['lidar', *SENSOR_BRIDGES]]
+             for s in SENSOR_BRIDGES]
     args += [
         DeclareLaunchArgument('sim_noise', default_value='true',
                               description='Simulated sensor noise (IMU, GNSS, cameras, lidar)'),
@@ -163,7 +148,6 @@ def generate_launch_description():
         OpaqueFunction(function=world_and_gazebo),
         spawn,
         *bridges,
-        OpaqueFunction(function=lidar_actions, args=[bridge_dir]),
         drivers,
         rviz,
     ])

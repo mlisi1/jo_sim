@@ -48,6 +48,7 @@ RUN apt update -y \
     ros-${DISTRO}-xacro \
     ros-${DISTRO}-rosbag2-storage-mcap \
     ros-${DISTRO}-rmw-cyclonedds-cpp \
+    ros-${DISTRO}-velodyne-laserscan \
     ros-${DISTRO}-realsense2-camera \
     ros-${DISTRO}-realsense2-description \
     ros-${DISTRO}-twist-mux \

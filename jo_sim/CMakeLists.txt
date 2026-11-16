@@ -10,11 +10,11 @@ add_executable(frame_restamp src/frame_restamp.cpp)
 target_compile_features(frame_restamp PUBLIC cxx_std_17)
 target_link_libraries(frame_restamp PUBLIC rclcpp::rclcpp ${sensor_msgs_TARGETS})
 
-add_executable(range_noise src/range_noise.cpp)
-target_compile_features(range_noise PUBLIC cxx_std_17)
-target_link_libraries(range_noise PUBLIC rclcpp::rclcpp ${sensor_msgs_TARGETS})
+add_executable(velodyne_emulation src/velodyne_emulation.cpp)
+target_compile_features(velodyne_emulation PUBLIC cxx_std_17)
+target_link_libraries(velodyne_emulation PUBLIC rclcpp::rclcpp ${sensor_msgs_TARGETS})
 
-install(TARGETS frame_restamp range_noise DESTINATION lib/${PROJECT_NAME})
+install(TARGETS frame_restamp velodyne_emulation DESTINATION lib/${PROJECT_NAME})
 
 # jo_sim.world_tools (used by the launch files and list_worlds)
 ament_python_install_package(${PROJECT_NAME})

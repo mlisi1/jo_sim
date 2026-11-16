@@ -98,7 +98,7 @@ Results are kept in `user_worlds/.cache/world_status.json`.
 #### Simulated sensors
 | Real sensor | Topics | Frame |
 |---|---|---|
-| Velodyne VLP-16 (RGL) | `/velodyne_points` | `velodyne` |
+| Velodyne VLP-16 (RGL) | `/velodyne_points` (x y z intensity ring time), `/scan` (velodyne_laserscan) | `velodyne` |
 | Xsens MTi | `/imu/data` | `imu_link` |
 | Xsens GNSS | `/gnss` | `imu_link` |
 | RealSense D455 front/back | `/<cam>_camera/camera/color/image_raw`, `.../color/camera_info`, `.../aligned_depth_to_color/image_raw`, `.../aligned_depth_to_color/camera_info`, `.../depth/color/points` | `<cam>_camera_color_optical_frame` (cloud: `<cam>_camera_depth_frame`) |
@@ -106,7 +106,7 @@ Results are kept in `user_worlds/.cache/world_status.json`.
 
 The RealSense TF tree below `<cam>_camera_link` is published by the simulator (`driver_emulation.launch.py`), as the driver does on the robot.
 
-`sim_noise:=false` turns off all sensor noise: IMU (Xsens MTi datasheet values), GNSS (RTK, 2 cm), colour images, lidar range (added by `range_noise`, as the RGL plugin has no noise model).
+`sim_noise:=false` turns off all sensor noise: IMU (Xsens MTi datasheet values), GNSS (RTK, 2 cm), colour images, lidar range (added by `velodyne_emulation`, as the RGL plugin has no noise model).
 
 #### glim_ros2 development
 To test a local checkout of glim_ros2, uncomment its volume in `compose.yaml` and set `EXTRA_BUILD_PACKAGES=glim_ros` in `.env`: it is rebuilt at container start.

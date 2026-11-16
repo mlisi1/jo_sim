@@ -15,7 +15,8 @@ groups:
       - sim_*
       - realsense_tf
       - frame_restamp
-      - range_noise
+      - velodyne_emulation
+      - velodyne_laserscan_node
       - robot_state_publisher
 
   localization:
