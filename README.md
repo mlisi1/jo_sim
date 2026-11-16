@@ -108,6 +108,12 @@ The RealSense TF tree below `<cam>_camera_link` is published by the simulator (`
 
 `sim_noise:=false` turns off all sensor noise: IMU (Xsens MTi datasheet values), GNSS (RTK, 2 cm), colour images, lidar range (added by `velodyne_emulation`, as the RGL plugin has no noise model).
 
+GPS localization in the sim:
+- **Heading:** the sim passes the spawn `yaw` to navsat_transform as `navsat_yaw_offset`. Gazebo is
+  east-north-up; the robot's 1.57 is for the Xsens, whose yaw reads 0 at north.
+- **Participant limit:** the CycloneDDS config allows up to 100 participants per domain (default 32,
+  too few for the full GPS stack).
+
 #### glim_ros2 development
 To test a local checkout of glim_ros2, uncomment its volume in `compose.yaml` and set `EXTRA_BUILD_PACKAGES=glim_ros` in `.env`: it is rebuilt at container start.
 
