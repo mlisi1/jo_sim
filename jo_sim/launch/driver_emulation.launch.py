@@ -47,6 +47,8 @@ def drivers(context):
     actions.append(Node(
         package='jo_sim', executable='realsense_tf', name='sim_realsense_tf', output='screen',
         parameters=[{'cameras': cameras, 'use_sim_time': True}],
+        # without it the camera frames (and so the camera clouds in RViz) are missing
+        respawn=True, respawn_delay=2.0,
     ))
     for cam in cameras:
         actions.append(Node(

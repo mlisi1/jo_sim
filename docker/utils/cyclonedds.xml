@@ -17,5 +17,11 @@
     <General>
       <AllowMulticast>spdp</AllowMulticast>
     </General>
+    <!-- Cyclone's own errors to stderr (they end up in the node logs): without it a failure
+         only shows as "rmw_create_node: failed to create domain" -->
+    <Tracing>
+      <Verbosity>severe</Verbosity>
+      <OutputFile>stderr</OutputFile>
+    </Tracing>
   </Domain>
 </CycloneDDS>
