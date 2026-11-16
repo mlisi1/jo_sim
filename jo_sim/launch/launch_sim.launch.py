@@ -8,6 +8,7 @@ sim_bringup.launch.py for the jo_bringup-equivalent entry point.
     ros2 run jo_sim list_worlds
 """
 import os
+import xml.etree.ElementTree as ET
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -67,6 +68,16 @@ def world_and_gazebo(context):
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')),
         launch_arguments={'gz_args': gz_args + patched, 'on_exit_shutdown': 'true'}.items(),
+    ))
+    # Clock from /world/<name>/clock, not the root /clock: the server creates the root topic only
+    # after the world has loaded, and with big worlds (small_city, city_osm_roundabout) a bridge
+    # subscribed before that never received it (no /clock in ROS -> nothing on sim time starts).
+    name = ET.parse(patched).getroot().find('world').get('name', 'default')
+    actions.append(Node(
+        package='ros_gz_bridge', executable='parameter_bridge', name='sim_clock_bridge',
+        output='screen',
+        arguments=[f'/world/{name}/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
+        remappings=[(f'/world/{name}/clock', '/clock')],
     ))
     return actions
 
