@@ -7,6 +7,7 @@ colour and depth frames coincide with <camera>_link.
 Parameter: cameras (list of camera names, e.g. [front_camera, back_camera]).
 """
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from geometry_msgs.msg import TransformStamped
 from rclpy.node import Node
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
@@ -40,7 +41,10 @@ class RealsenseTf(Node):
 
 def main():
     rclpy.init()
-    rclpy.spin(RealsenseTf())
+    try:
+        rclpy.spin(RealsenseTf())
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass  # Ctrl-C of the launch: a clean exit, not a crash
 
 
 if __name__ == '__main__':

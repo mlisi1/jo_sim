@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Make the Gazebo GUI camera follow a model (default: jo), started by launch_sim.launch.py.
+# Waits for the GUI's CameraTracking service and the spawned model, asks to follow, and checks
+# /gui/currently_tracked; it asks again until the GUI reports the target (a request sent while the
+# GUI is still loading the world can be lost). Gazebo's default offset: 3 m behind, 2 m above.
+target=${1:-jo}
+for i in $(seq 1 600); do
+  gz service -l 2>/dev/null | grep -qx /gui/follow \
+    && gz model --list 2>/dev/null | grep -q -- "- ${target}\$" && break
+  sleep 1
+done
+for attempt in $(seq 1 30); do
+  gz service -s /gui/follow --reqtype gz.msgs.StringMsg --reptype gz.msgs.Boolean \
+    --timeout 3000 --req "data: \"${target}\"" >/dev/null 2>&1
+  sleep 1
+  if timeout 3 gz topic -e -n 1 -t /gui/currently_tracked 2>/dev/null \
+      | grep -q "name: \"${target}\""; then
+    echo "[jo_sim] Gazebo GUI camera following ${target} (follow:=false to disable)"
+    exit 0
+  fi
+  sleep 2
+done
+echo "[jo_sim] could not make the Gazebo GUI camera follow ${target} (right-click it > Follow)" >&2
+exit 0

@@ -17,6 +17,14 @@
     <General>
       <AllowMulticast>spdp</AllowMulticast>
     </General>
+    <!-- Each process is one participant with an automatic index (ports 7410 + 2*index), max 32
+         by default. The full GPS stack with GUI and RViz, plus ros2 CLI tools and the daemon,
+         goes past that, and the processes started last fail with "rmw_create_node: failed to
+         create domain". 100 keeps the ports below the next domain's (250 per domain). -->
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <MaxAutoParticipantIndex>100</MaxAutoParticipantIndex>
+    </Discovery>
     <!-- Cyclone's own errors to stderr (they end up in the node logs): without it a failure
          only shows as "rmw_create_node: failed to create domain" -->
     <Tracing>

@@ -10,7 +10,7 @@ sim_bringup.launch.py for the jo_bringup-equivalent entry point.
 import os
 import xml.etree.ElementTree as ET
 
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_prefix, get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import (AppendEnvironmentVariable, DeclareLaunchArgument, ExecuteProcess,
@@ -70,16 +70,10 @@ def world_and_gazebo(context):
         launch_arguments={'gz_args': gz_args + patched, 'on_exit_shutdown': 'true'}.items(),
     ))
     if gui and LaunchConfiguration('follow').perform(context).lower() in ('true', '1'):
-        # Gazebo GUI camera follows the robot: once the GUI's CameraTracking service and the
-        # spawned model exist, set the target (Gazebo's default offset: 3 m behind, 2 m above)
-        follow = (
-            'for i in $(seq 1 600); do '
-            'gz service -l 2>/dev/null | grep -qx /gui/follow '
-            '&& gz model --list 2>/dev/null | grep -q -- "- jo$" && break; sleep 1; done; '
-            'gz service -s /gui/follow --reqtype gz.msgs.StringMsg --reptype gz.msgs.Boolean '
-            '--timeout 3000 --req \'data: "jo"\' >/dev/null '
-            '&& echo "[jo_sim] Gazebo GUI camera following jo (follow:=false to disable)"')
-        actions.append(ExecuteProcess(cmd=['bash', '-c', follow], name='sim_gui_follow', output='screen'))
+        # Gazebo GUI camera follows the robot (scripts/gui_follow)
+        actions.append(ExecuteProcess(
+            cmd=[os.path.join(get_package_prefix(PKG), 'lib', PKG, 'gui_follow'), 'jo'],
+            name='sim_gui_follow', output='screen'))
 
     # Clock from /world/<name>/clock, not the root /clock: the server creates the root topic only
     # after the world has loaded, and with big worlds (small_city, city_osm_roundabout) a bridge
