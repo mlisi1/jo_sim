@@ -3,18 +3,58 @@
 * Worlds are looked up by name (``warehouse`` -> ``warehouse.sdf`` / ``warehouse.world``) in, in order:
   the directories in ``$JO_SIM_WORLDS`` (``:``-separated, the host-mounted ``user_worlds/``),
   ``share/jo_sim/worlds`` and the external collection. A path to a file is used as is.
-* ``prepare_world`` writes a patched copy of the world that contains the world systems the robot
-  needs (missing ones are added) and ``<spherical_coordinates>`` for the GNSS, so any SDF world can be
-  dropped in a folder without editing it. Sensor systems the robot model brings itself (IMU, NavSat)
-  are not added, otherwise they would run twice.
+* ``prepare_world`` writes a patched copy of the world, so any SDF world (including Gazebo Classic
+  ones) can be dropped in a folder without editing it:
+  - adds the world systems the robot needs; sensor systems the robot model brings itself
+    (IMU, NavSat) are not added, otherwise they would run twice;
+  - adds ``<spherical_coordinates>`` for the GNSS (or replaces the Classic 0,0 placeholder);
+  - Classic built-ins ``model://sun`` / ``model://ground_plane`` are written inline;
+  - other ``model://`` includes not found locally are downloaded from Gazebo Fuel (OpenRobotics hosts
+    the Classic model database, names with spaces) into MODEL_CACHE under their Classic name, with
+    their dependencies, or dropped with a warning if unavailable;
+  - duplicate top-level model names (an error in Harmonic) are made unique.
 """
+import io
+import json
 import os
+import re
+import shutil
+import zipfile
+import urllib.error
+import urllib.parse
+import urllib.request
 import xml.etree.ElementTree as ET
 
 from ament_index_python.packages import get_package_share_directory
 
 EXTENSIONS = ('.sdf', '.world')
 OUT_DIR = '/tmp/jo_sim/worlds'
+FUEL_URL = 'https://fuel.gazebosim.org/1.0/OpenRobotics/models/'
+# Fuel models and check_worlds results: in the host-mounted user worlds folder if there is one,
+# so they survive the container
+CACHE_DIR = os.path.join(os.environ['JO_SIM_WORLDS'], '.cache') if os.environ.get('JO_SIM_WORLDS') \
+    else os.path.expanduser('~/.cache/jo_sim')
+FUEL_CACHE = os.path.join(CACHE_DIR, 'fuel_models.json')
+MODEL_CACHE = os.path.join(CACHE_DIR, 'models')
+STATUS_FILE = os.path.join(CACHE_DIR, 'world_status.json')
+# Gazebo Classic shipped textures in its media folder (used by heightmaps as file://media/...)
+CLASSIC_MEDIA_URL = 'https://raw.githubusercontent.com/gazebosim/gazebo-classic/gazebo11/'
+
+SUN = '''<light type="directional" name="sun">
+  <cast_shadows>true</cast_shadows><pose>0 0 10 0 0 0</pose>
+  <diffuse>0.8 0.8 0.8 1</diffuse><specular>0.2 0.2 0.2 1</specular>
+  <attenuation><range>1000</range><constant>0.9</constant><linear>0.01</linear><quadratic>0.001</quadratic></attenuation>
+  <direction>-0.5 0.1 -0.9</direction>
+</light>'''
+
+GROUND_PLANE = '''<model name="ground_plane"><static>true</static>
+  <link name="link">
+    <collision name="collision"><geometry><plane><normal>0 0 1</normal><size>200 200</size></plane></geometry>
+      <surface><friction><ode><mu>100</mu><mu2>50</mu2></ode></friction></surface></collision>
+    <visual name="visual"><geometry><plane><normal>0 0 1</normal><size>200 200</size></plane></geometry>
+      <material><ambient>0.8 0.8 0.8 1</ambient><diffuse>0.8 0.8 0.8 1</diffuse><specular>0.8 0.8 0.8 1</specular></material></visual>
+  </link>
+</model>'''
 
 # (canonical filename, plugin name, extra child elements)
 REQUIRED_SYSTEMS = [
@@ -66,12 +106,203 @@ def resource_dirs(world_path):
     candidates = [d, os.path.join(d, 'models'), os.path.join(os.path.dirname(d), 'models')]
     candidates += search_dirs()
     candidates += [os.path.join(s, 'models') for s in search_dirs()]
+    candidates += [MODEL_CACHE, os.path.join(CACHE_DIR, 'classic')]
     out = []
     for c in candidates:
         c = os.path.abspath(c)
         if os.path.isdir(c) and c not in out:
             out.append(c)
     return out
+
+
+def local_models(dirs):
+    """Names of the models found in the resource directories (folders with a model.config)."""
+    names = set()
+    for d in dirs + [p for p in os.environ.get('GZ_SIM_RESOURCE_PATH', '').split(':') if p]:
+        if os.path.isdir(d):
+            for n in os.listdir(d):
+                if os.path.isfile(os.path.join(d, n, 'model.config')):
+                    names.add(n)
+    return names
+
+
+class FuelIndex:
+    """Which Classic model names exist on Fuel; answers cached on disk, network checked once."""
+
+    def __init__(self):
+        try:
+            with open(FUEL_CACHE) as f:
+                self.cache = json.load(f)
+        except (OSError, ValueError):
+            self.cache = {}
+        self.online = None
+
+    @staticmethod
+    def url(name):
+        return FUEL_URL + urllib.parse.quote(name.replace('_', ' '))
+
+    def _exists(self, name):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(self.url(name)), timeout=4) as r:
+                return r.status == 200
+        except urllib.error.HTTPError:
+            return False
+
+    def lookup(self, name):
+        if name in self.cache:
+            return self.cache[name]
+        if self.online is False:
+            return False
+        try:
+            found = self._exists(name)
+            self.online = True
+        except OSError:
+            self.online = False
+            return False
+        self.cache[name] = found
+        return found
+
+    def fetch(self, name, local):
+        """Download a Classic model from Fuel into MODEL_CACHE/<name>, with its model:// dependencies.
+
+        Fuel stores the Classic models as e.g. "construction barrel", but their files still refer to
+        themselves as model://construction_barrel/...: kept under the Classic name they resolve locally.
+        """
+        target = os.path.join(MODEL_CACHE, name)
+        if os.path.isfile(os.path.join(target, 'model.config')):
+            return True
+        if not self.lookup(name):
+            return False
+        url = self.url(name) + '/tip/' + urllib.parse.quote(name.replace('_', ' ').lower()) + '.zip'
+        try:
+            with urllib.request.urlopen(url, timeout=60) as r:
+                data = r.read()
+            tmp = target + '.part'
+            shutil.rmtree(tmp, ignore_errors=True)
+            with zipfile.ZipFile(io.BytesIO(data)) as z:
+                for m in z.namelist():
+                    dest = os.path.realpath(os.path.join(tmp, m))
+                    if not dest.startswith(os.path.realpath(tmp) + os.sep):
+                        raise ValueError(f'unsafe path in {url}: {m}')
+                z.extractall(tmp)
+            os.replace(tmp, target)
+        except (OSError, ValueError, zipfile.BadZipFile):
+            shutil.rmtree(target + '.part', ignore_errors=True)
+            return False
+        local.add(name)
+        # Some Fuel models refer to themselves by their display name (model://Pine Tree/...)
+        try:
+            display = ET.parse(os.path.join(target, 'model.config')).getroot().findtext('name', '').strip()
+            link = os.path.join(MODEL_CACHE, display)
+            if display and display != name and '/' not in display and not os.path.lexists(link):
+                os.symlink(name, link)
+        except (OSError, ET.ParseError):
+            pass
+        for root, _, files in os.walk(target):
+            for f in files:
+                if f.endswith(('.sdf', '.material', '.config')):
+                    with open(os.path.join(root, f), errors='replace') as fh:
+                        deps = set(re.findall(r'model://([A-Za-z0-9_\-]+)', fh.read()))
+                    for dep in deps - local - {'sun', 'ground_plane'}:
+                        self.fetch(dep, local)
+        return True
+
+    def save(self):
+        os.makedirs(os.path.dirname(FUEL_CACHE), exist_ok=True)
+        with open(FUEL_CACHE, 'w') as f:
+            json.dump(self.cache, f, indent=1, sort_keys=True)
+
+
+def _fix_includes(world, local, changes):
+    fuel = FuelIndex()
+    for inc in list(world.findall('include')):
+        uri = inc.find('uri')
+        if uri is None or not (uri.text or '').strip().startswith('model://'):
+            continue
+        name = uri.text.strip()[len('model://'):].strip('/').split('/')[0]
+        if name in local:
+            continue
+        if name in ('sun', 'ground_plane'):
+            elem = ET.fromstring(SUN if name == 'sun' else GROUND_PLANE)
+            pose = inc.find('pose')
+            if name == 'ground_plane' and pose is not None:
+                elem.insert(0, pose)
+            if inc.find('name') is not None and name == 'ground_plane':
+                elem.set('name', inc.find('name').text)
+            world.insert(list(world).index(inc), elem)
+            world.remove(inc)
+            changes.append(f'inlined Classic built-in {name}')
+        elif fuel.fetch(name, local):
+            changes.append(f'model {name}: downloaded from Gazebo Fuel')
+        else:
+            world.remove(inc)
+            changes.append(f'WARNING model {name} not found locally nor on Fuel: removed')
+    # model:// resources used by inline models (meshes, materials)
+    for uri in world.iter('uri'):
+        m = re.match(r'\s*model://([^/<\s]+)', uri.text or '')
+        if m and m.group(1) not in local:
+            name = m.group(1)
+            if fuel.fetch(name, local):
+                changes.append(f'model {name}: downloaded from Gazebo Fuel')
+            else:
+                local.add(name)  # report once
+                changes.append(f'WARNING resource model://{name} not found locally nor on Fuel')
+    fuel.save()
+
+
+def _fetch_classic_media(world, dirs, changes):
+    """file://media/... (textures of the Gazebo Classic install, used by heightmaps): download them from
+    the gazebo-classic repo into CACHE_DIR/classic, which is on the resource path (sdformat resolves
+    file://media/x against it). References are searched in the world and in the models it includes."""
+    texts = [ET.tostring(world, encoding='unicode')]
+    for uri in world.iter('uri'):
+        m = re.match(r'\s*model://([^/<\s]+)', uri.text or '')
+        for d in dirs if m else []:
+            sdf = os.path.join(d, m.group(1), 'model.sdf')
+            if os.path.isfile(sdf):
+                with open(sdf, errors='replace') as f:
+                    texts.append(f.read())
+                break
+    refs = set()
+    for t in texts:
+        refs.update(re.findall(r'file://(media/[^<\s"]+\.(?:png|jpg|jpeg|dds|tga))', t))
+    for rel in sorted(refs):
+        local = os.path.join(CACHE_DIR, 'classic', rel)
+        if os.path.isfile(local):
+            continue
+        try:
+            with urllib.request.urlopen(CLASSIC_MEDIA_URL + rel, timeout=30) as r:
+                data = r.read()
+            os.makedirs(os.path.dirname(local), exist_ok=True)
+            with open(local, 'wb') as f:
+                f.write(data)
+            changes.append(f'Classic texture {os.path.basename(rel)}: downloaded')
+        except OSError:
+            changes.append(f'WARNING Classic texture {rel} not available')
+
+
+def _unique_names(world, changes):
+    seen = {}
+    for elem in world:
+        if elem.tag == 'model':
+            holder, key = elem, None
+        elif elem.tag == 'include' and elem.find('name') is not None:
+            holder, key = elem.find('name'), 'text'
+        else:
+            continue
+        name = holder.get('name') if key is None else holder.text
+        if not name:
+            continue
+        if name in seen:
+            seen[name] += 1
+            new = f'{name}_{seen[name]}'
+            if key is None:
+                holder.set('name', new)
+            else:
+                holder.text = new
+            changes.append(f'renamed duplicate model {name} -> {new}')
+        else:
+            seen[name] = 1
 
 
 def _canonical(filename):
@@ -125,6 +356,15 @@ def prepare_world(world_path, latitude, longitude, elevation=0.0, out_dir=OUT_DI
                           ('elevation', str(elevation)), ('heading_deg', '0')):
             ET.SubElement(sc, tag).text = text
         changes.append(f'added spherical_coordinates ({latitude}, {longitude})')
+
+    for speed in world.findall('scene/sky/clouds/speed'):
+        if speed.text and speed.text.strip().startswith('-'):
+            speed.text = speed.text.strip()[1:]
+            changes.append('cloud speed made positive (Classic allowed negative values)')
+
+    _fix_includes(world, local_models(resource_dirs(world_path)), changes)
+    _fetch_classic_media(world, resource_dirs(world_path), changes)
+    _unique_names(world, changes)
 
     os.makedirs(out_dir, exist_ok=True)
     out = os.path.join(out_dir, os.path.splitext(os.path.basename(world_path))[0] + '.sdf')

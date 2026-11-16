@@ -112,6 +112,19 @@ Findings:
 - Optional sidecar `<world>.yaml`: spawn pose(s), GNSS datum (lat/lon), description, missions, obstacles.
 - `check_worlds` script: loads every world headless for N s, checks sensor topics, maintains a
   curated "known good" list (many external worlds are Gazebo Classic and do not load in Harmonic).
+  **Done (2026-11-16):** `check_worlds` (load errors, server alive, RTF; results in
+  `user_worlds/.cache/world_status.json`, shown by `list_worlds`). Classic fixes in the preprocessor:
+  sun/ground_plane inlined; missing `model://` models (includes and inline mesh URIs) downloaded from
+  Fuel (OpenRobotics, `_` → space) into `user_worlds/.cache/models` under the Classic name, with their
+  dependencies and a display-name link; Classic `file://media/...` textures fetched from the
+  gazebo-classic repo; negative cloud speed; duplicate names.
+  Result: **31 ok, 5 slow, 15 fail** of 51. Slow: `warehouse` (RTF ≈ 0.003, box stacks on mesh shelves;
+  static models 0.13, bullet detector / featherstone no better), `barrels`, `canyonview_field`, two
+  `fetchit` variants. Failing, not fixable generically: meshes without normals (DART: cyberzoo
+  orange poles, office_small, simple_env_*), sdformat assertion (office_earthquake, office_env_large),
+  models not on Fuel (powerplant, DRC models in test_city), invalid inertia (workshop_example, test_zone),
+  world-specific texture (yosemite).
+  Still to do: sensor-topic check with the robot spawned.
 
 ## Phase C — Launch ergonomics
 

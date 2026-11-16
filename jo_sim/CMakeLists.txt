@@ -20,7 +20,7 @@ install(TARGETS frame_restamp range_noise DESTINATION lib/${PROJECT_NAME})
 ament_python_install_package(${PROJECT_NAME})
 
 install(
-  PROGRAMS scripts/list_worlds scripts/realsense_tf
+  PROGRAMS scripts/list_worlds scripts/check_worlds scripts/realsense_tf
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -30,11 +30,9 @@ install(
 )
 
 # Built-in worlds; the external collection (thousands of files) is installed as one symlink
-install(
-  DIRECTORY worlds
-  DESTINATION share/${PROJECT_NAME}
-  PATTERN "external" EXCLUDE
-)
+# (an install(DIRECTORY ... EXCLUDE) is not honoured by --symlink-install)
+file(GLOB WORLD_FILES LIST_DIRECTORIES false worlds/*)
+install(FILES ${WORLD_FILES} DESTINATION share/${PROJECT_NAME}/worlds)
 install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E rm -rf
   \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/worlds/external)")
 install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink

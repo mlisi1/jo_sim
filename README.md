@@ -70,19 +70,30 @@ The simulator exposes the **same ROS interface as the real robot** (jo-zotac): s
 ```bash
 full_navigation                       # front/back cameras + localization + local navigation + RViz
 full_gps_navigation                   # + GNSS, GPS localization and navigation
-ros2 launch jo_sim sim_bringup.launch.py localization:=true world:=warehouse x:=2.0 yaw:=1.57
+ros2 launch jo_sim sim_bringup.launch.py localization:=true world:=office_cpr x:=2.0 yaw:=1.57
 ```
 Simulator-only arguments: `world`, `gui`, `x y z yaw`, `latitude longitude elevation` (GNSS datum for worlds without `<spherical_coordinates>`), `sim_noise` (sensor noise on/off, default on), `lidar_range_stddev`, `glim_config`.
 
 #### Simulator only
 ```bash
 sim                                   # world + robot + all sensors + RViz
-sim_worlds                            # list the worlds that can be loaded by name
+sim_worlds                            # list the worlds that can be loaded by name (with check_worlds results)
+check_worlds                          # test which worlds load and run in real time
 teleop                                # keyboard teleop
 ```
 
 #### Worlds
-Drop a `.sdf` / `.world` file (with an optional `models/` folder next to it) in `user_worlds/` and launch it by name: `sim world:=my_world`. Worlds are searched in `user_worlds/`, `jo_sim/worlds/` and the [external collection](https://github.com/leonhartyao/gazebo_models_worlds_collection.git). The world systems the robot needs (physics, sensors, RGL lidar) and `<spherical_coordinates>` are added automatically when missing. Many worlds of the external collection were made for Gazebo Classic and may not load correctly.
+Drop a `.sdf` / `.world` file (with an optional `models/` folder next to it) in `user_worlds/` and launch it by name: `sim world:=my_world`. Worlds are searched in `user_worlds/`, `jo_sim/worlds/` and the [external collection](https://github.com/leonhartyao/gazebo_models_worlds_collection.git). The world is patched automatically (a copy in `/tmp/jo_sim/worlds`, the original is not touched):
+- the world systems the robot needs (physics, sensors, RGL lidar) and `<spherical_coordinates>` are added when missing;
+- Gazebo Classic worlds: `model://sun` / `model://ground_plane` are written inline, models that are not available locally are downloaded from [Gazebo Fuel](https://app.gazebosim.org/OpenRobotics) on first use (with their dependencies, into `user_worlds/.cache/models`), duplicate model names are made unique.
+
+Loading is not enough: some Classic worlds run far below real time in Harmonic (e.g. `warehouse`, RTF ≈ 0.003: stacked dynamic boxes on mesh shelves). Test them once with
+```bash
+check_worlds                 # all worlds, ~30 s each, headless, does not disturb a running sim
+check_worlds warehouse cafe  # only some
+sim_worlds                   # list with the result: ok / slow / fails
+```
+Results are kept in `user_worlds/.cache/world_status.json`.
 
 #### Simulated sensors
 | Real sensor | Topics | Frame |
