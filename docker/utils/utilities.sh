@@ -10,6 +10,10 @@ fi
 source /home/ros/install/setup.bash
 source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash
 
+# DendROS global settings (same as the host): the repo file, so `dendros config` edits persist.
+# node_colors.yaml next to it is runtime state written by each launch, not a setting.
+mkdir -p ~/.config/dendROS && ln -sfn /home/ros/utils/dendROS/defaults.yaml ~/.config/dendROS/defaults.yaml
+
 alias no_gpu='__NV_PRIME_RENDER_OFFLOAD=0 __GLX_VENDOR_LIBRARY_NAME='
 
 # Simulator only (world + robot + all sensors)

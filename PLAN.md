@@ -274,6 +274,9 @@ Findings:
   `DENDROS_VERSION=latest`, overridable). `jo_sim/config/dendROS.yaml` with groups SIM
   (gz, bridges, spawner, sim helpers), DESC (`robot_state_publisher`), VIZ (rviz).
   jo-zotac should switch to the same snippet.
+  Global settings: `docker/utils/dendROS/defaults.yaml` (copy of Michele's host `~/.config/dendROS/defaults.yaml`),
+  symlinked into `~/.config/dendROS/` by `utilities.sh`. `node_colors.yaml` is runtime state written by each
+  launch (not a setting); the group colors are in the package `dendROS.yaml`, matching jo-zotac's.
 - **Testudo** (topic health): submodule following `main` (no `dev` branch / tags yet), built in
   the workspace (`textual` via pip). **One Testudo config shared by robot and sim** (in
   jo_navigation or jo_description, both mounted by both containers) declaring the robot's topics,
