@@ -107,11 +107,6 @@ the GLIM map growing, a Nav2 goal reached. Then a GPS goal in a city world.</p>
 That rule decides most design questions. See [Invariants](developer/invariants.md) and
 [Design decisions](developer/decisions.md).
 
-<div class="media-ph" data-kind="image" markdown>
-<span class="media-ph-kind">Image</span>
-<p>Jo in Gazebo (office_cpr), next to a photo of the real robot.</p>
-</div>
-
 ## Where to go
 
 | You want to… | Start at |

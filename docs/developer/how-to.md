@@ -31,7 +31,7 @@ more.
 6. **The interface check:** the topic, its rate and frame in `jo_sim/config/testudo.yaml`.
 7. **Docs:** a row in [Sensors](../user-guide/sensors.md) and
    [Topics and frames](../reference/topics-frames.md). Run `python3 docs/gen/gen_tables.py` for the
-   argument and bridge tables.
+   argument and bridge tables, and `python3 docs/gen/gen_topics.py` for the measured topic table.
 
 **Check:** `ros2 topic hz`, `ros2 topic echo --once` (frame, encoding, fields) against a bag of the
 real robot, then `health`.

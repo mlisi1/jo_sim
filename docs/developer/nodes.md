@@ -13,5 +13,10 @@
 | `scenario` | Python | Runs a scenario: launches headless, sends Nav2 goals, checks the criteria against the ground truth, writes the report and the bag. |
 | `check_worlds`, `list_worlds` | Python | World checks, and the world list with their results. |
 
-!!! planned "Planned content (G3)"
-    The parameters of each node, and their topics and QoS.
+## Running nodes: topics and parameters
+
+Measured on a running simulator by `docs/gen/gen_topics.py`. The node names are the launch
+names (`velodyne_emulation`, `sim_<cam>_camera_depth_to_mm`, ...); the QoS of each topic is on
+[Topics and frames](../reference/topics-frames.md#measured-every-topic-with-rate-qos-and-nodes).
+
+--8<-- "docs/includes/generated/nodes.md"

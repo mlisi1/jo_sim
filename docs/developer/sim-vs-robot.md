@@ -20,5 +20,15 @@ Each difference between the simulator's configuration and the robot's, with its 
 | `glim_anchor_frame` | `imu` (robot unchanged) | `base` | The origin of GLIM's `map` and `odom` frames. With `base`, GLIM's odometry and `/odometry/filtered` start at 0 (checked to below 1 mm). |
 | `navsat_yaw_offset` | 1.57 (the Xsens yaw is 0 at north) | the spawn yaw | Gazebo is ENU, and GLIM's odometry starts at the spawn heading. |
 
-!!! planned "Planned content"
-    The EKF (`localization*.yaml`) and Nav2 differences, if any are introduced.
+## EKF and Nav2
+
+None. The simulator runs the robot's own files from jo_navigation: `localization.yaml`,
+`localization_gps.yaml`, `nav2_local.yaml` and `nav2_local_gps_voxel.yaml`. Only `use_sim_time` and
+`navsat_yaw_offset` (above) change.
+
+To try a variant without touching the robot's file, pass it with `localization_params:=file.yaml`.
+
+!!! note "Open: the IMU heading convention"
+    The Xsens reports an absolute heading (0 = north). Whether the simulated IMU should follow the
+    same convention is being checked on the robot first. Until then, results that depend on the
+    IMU's absolute yaw are only meaningful at spawn yaw 0.

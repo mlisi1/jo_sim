@@ -24,4 +24,9 @@ python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt
   `docs/includes/generated/`, and the pages include them. Don't edit them by hand: with the container
   up, run `python3 docs/gen/gen_tables.py` and commit the result. Do it whenever a launch argument,
   a bridge config or `./jo` changes.
+- **Measured tables** (every topic with its rate and QoS, the TF tree, the node parameters) come from
+  `python3 docs/gen/gen_topics.py`. It starts a headless simulator on domain 79, so it needs the GPU
+  (about two minutes). Run it when a topic, a frame, a rate or a node parameter changes.
+- **The performance table** comes from `python3 docs/gen/measure_performance.py` (about 12 minutes,
+  GPU). It depends on the machine, so paste it into the page with the machine and the date.
 - **The logo and home render** come from `docs/gen/render_logo/render.sh` (CPU only).

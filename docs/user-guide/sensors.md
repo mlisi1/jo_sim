@@ -58,6 +58,53 @@ with the robot at rest.
 - RealSense depth range: up to ~20 m in the sim (the depth clip in `d456.xacro` is not applied).
 - The lidar does not see heightmap terrain.
 
-!!! planned "Planned content"
-    - The TF tree (a diagram generated from the URDF).
-    - Per-sensor pages: the exact parameters and how they map to the datasheets.
+## TF tree
+
+The simulator alone (`launch_sim`) publishes only static transforms. With the stack running,
+GLIM adds `map` → `odom` and the EKF adds `odom` → `base_link`, as on the robot.
+
+--8<-- "docs/includes/generated/tf_tree.md"
+
+## Sensor parameters
+
+The Gazebo side is in jo_description (`velodyne.xacro`, `imu.xacro`, `d456.xacro`, the noise in
+`sim_noise.xacro`), inside `<gazebo>` tags. The driver side is in `driver_emulation.launch.py`. The
+values below are read from those files.
+
+### Velodyne VLP-16
+
+| Parameter | Sim | Real sensor / driver |
+|---|---|---|
+| Model | RGL `pattern_preset: Puck` | VLP-16 ("Puck") |
+| Channels | 16, numbered by elevation from −15° in 2° steps (`velodyne_emulation`: `rings`, `vertical_fov_min_deg`, `vertical_step_deg`) | 16, ±15°, 2° apart |
+| Rate | 10 Hz | 10 Hz (driver default; the sensor does 5–20) |
+| Range | RGL casts 0.1–100 m; `velodyne_emulation` keeps 0.9–130 m, the driver's limits | 100 m sensor; driver `min_range` 0.9, `max_range` 130 |
+| Range noise | Gaussian σ 0.015 m (`lidar_range_stddev`) | ±3 cm accuracy |
+| Point time | 0 for every point (instant sweep) | per-point time within the 0.1 s sweep |
+| `/scan` | `velodyne_laserscan_node`, `ring: -1`, `resolution: 0.007` | the same node and parameters |
+
+### Xsens IMU and GNSS
+
+| Parameter | Sim | Real sensor |
+|---|---|---|
+| IMU rate | 200 Hz | 200 Hz output |
+| Gyro noise | σ 1.7e-3 rad/s, bias σ 4e-5 | MTi-6x0: 0.007 °/s/√Hz at 200 Hz |
+| Accelerometer noise | σ 8.3e-3 m/s², bias σ 1e-3 | MTi-6x0: 60 µg/√Hz at 200 Hz |
+| GNSS rate | 10 Hz | 10 Hz |
+| GNSS noise | horizontal 1.8e-7° (about 2 cm), vertical 0.04 m | RTK |
+| Frame | `imu_link` for both | `imu_link` for both |
+
+The GNSS horizontal noise is in degrees because gz-sensors applies it to latitude and longitude.
+
+### RealSense D456 (front and back)
+
+| Parameter | Sim | Robot |
+|---|---|---|
+| Rate | 30 Hz | 30 Hz |
+| Colour resolution | 640×480 | 1280×720 |
+| Horizontal FOV | 1.50 rad (about 86°), colour and depth | see the D456 datasheet |
+| Colour clip | 0.1–20 m | |
+| Depth | 32FC1 from Gazebo, converted to 16UC1 mm (`depth_to_mm`) | 16UC1 mm (`depth_format: Z16`) |
+| Depth range | up to about 20 m: the `<depth_camera>` clip (0.35–8 m) is not applied | |
+| Colour noise | Gaussian σ 0.007 (normalized intensity) | |
+| Image frame | `<cam>_camera_color_optical_frame` | the same |

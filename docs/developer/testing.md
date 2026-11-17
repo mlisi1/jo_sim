@@ -30,5 +30,16 @@ Test runs use their own ROS domain and Gazebo partition, so they never disturb a
 exits 0 on pass and 1 on fail (see [Scenarios](../user-guide/scenarios.md)). Use one after any
 change that can affect the robot's motion or localization.
 
-!!! planned "Planned content (Phase E)"
-    CI smoke runs. GitHub-hosted runners have no GPU, so they need a self-hosted runner.
+## CI
+
+Only the docs build runs in CI (`mkdocs build --strict`). The simulator has no CI: GitHub-hosted
+runners have no GPU, and a self-hosted GPU runner isn't worth its upkeep for this project (the
+maintainer's decision, 2026-11-17).
+
+So, before pushing a change that can affect motion, localization or the robot interface, run by
+hand in a sandbox:
+
+1. `./jo --domain 77 --partition jo_sim_test scenario office_out_and_back` and `office_crossing`:
+   both must pass.
+2. `health` on the full stack: every topic green.
+3. If you changed a world patch: `./jo check --robot` on the worlds it touches.

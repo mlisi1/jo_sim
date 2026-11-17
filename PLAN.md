@@ -42,8 +42,8 @@ publishes the docs site.
   on the robot first.
 - **EKF tuning, and Nav2 tuning:** the crossing-walker finding (D3) and the EKF findings below.
   Not simulator work.
-- **CI for the simulator:** Michele asked whether it's needed at all. Proposed: no, beyond the docs
-  build that already runs; run the scenarios by hand. GitHub runners have no GPU. Not confirmed.
+- **CI for the simulator: decided 2026-11-17: no CI** beyond the docs build. Scenarios and `health`
+  are run by hand before pushing (docs: developer/testing "CI").
 - **Robot `T_lidar_imu`:** Michele tests it on the robot.
 
 **Constraints:**
@@ -58,10 +58,11 @@ publishes the docs site.
   in the same commit as the feature; `mkdocs build --strict` must pass. Never `mkdocs gh-deploy`.
 
 ### Next session checklist (docs: G2–G5 and the media)
-1. **Agree the media plan with Michele first.** Who records the videos is still open. Options:
-   - Michele records the interactive ones (GUI, RViz, the DendROS TUI);
-   - I record scripted screen captures: ffmpeg x11grab on the GUI while a script drives the sim
-     (scenario runner, `/cmd_vel`, `sim_control`). The GPU is needed, so ask Michele first.
+1. **Media plan: agreed (2026-11-17).** Michele: Claude records **all 7 videos** as scripted
+   screen captures (ffmpeg x11grab on the GUI while a script drives the sim: scenario runner,
+   `/cmd_vel`, `sim_control`; RViz goals sent as topics). GPU use for the screenshots, the videos and
+   the thumbnail renderer is OK **when it's free**: check `nvidia-smi` first and coordinate with the
+   other sessions through SendMessage (testudo-c2 was watching domain 77 on 2026-11-17).
 2. **G4, the media.** 31 placeholders: `grep -rn 'class="media-ph' docs` (8 images, 7 videos, the
    rest diagrams/screenshots). For each, the caption in the placeholder says what to show.
    - **Screenshots:** Gazebo GUI, RViz in each mode, the sensor views (cloud, cameras, depth), the
@@ -73,20 +74,14 @@ publishes the docs site.
      a scenario run, a GLIM map. Short compressed MP4 or WebM, a few MB each, in `docs/assets/`
      (Pages serves no Git LFS).
    - **Plot:** ground truth vs GLIM vs EKF, from a scenario bag (`--record all`).
-3. **G2–G3, the remaining text.** 12 `!!! planned` boxes: `grep -rn '!!! planned' docs`.
-   - getting-started/updating: the rebuild table.
-   - user-guide/sensors: the TF tree, generated from the URDF, and per-sensor parameters.
-   - user-guide/performance: RTF per world and mode, from `world_status.json`, and the cost per sensor.
-   - user-guide/troubleshooting: more entries, from the gotchas in this file and in memory.
-   - developer/architecture: the launch graph, and the per-sensor data flow.
-   - developer/nodes: parameters, topics and QoS per node.
-   - developer/launch-files: the walkthrough.
-   - developer/world-preprocessor: before/after for each patch.
-   - reference/topics-frames: a generated table.
-   - developer/docker and developer/testing: the CI notes. Close them according to Michele's CI answer.
-   - developer/sim-vs-robot: the EKF and Nav2 differences (none so far).
-   - Kept up to date by generation (Phase G): add the world catalogue and topics generators to
-     `docs/gen/gen_tables.py`.
+3. **G2–G3, the remaining text: done 2026-11-17 (session 2).** All 12 `!!! planned` boxes closed.
+   - Measured, generated: topics (rate, QoS, nodes), TF tree, node parameters (`docs/gen/gen_topics.py`).
+     The probe measures in 3 passes: with all clouds in one process the IMU read 27 Hz instead of 200.
+   - Performance: `docs/gen/measure_performance.py` on office_cpr (cameras ~1.4 cores each, stack +1.2
+     cores, RTF ≥ 0.93). Per-world RTF stays in the worlds table.
+   - The world catalogue generator is still to do, with the thumbnails (G4).
+   - The home placeholder "Jo next to a photo of the real robot" was removed: Michele is fine with
+     the render already in the hero.
 4. **G5, the review:** a fresh agent with only the site sets up the sim and adds a sensor; Michele
    reads it as a new user. Then the merge `dev` → `main` (Michele) and Settings → Pages → Source:
    GitHub Actions.
@@ -98,6 +93,9 @@ publishes the docs site.
 
 **Docs workflow:**
 - Generated tables: `python3 docs/gen/gen_tables.py`. It needs the container running.
+- Measured tables (topics with rate/QoS, TF tree, node parameters): `python3 docs/gen/gen_topics.py`
+  (headless sim on domain 79 / partition jo_sim_docs, ~2 min, GPU). Performance table:
+  `python3 docs/gen/measure_performance.py` (~12 min, GPU), pasted into performance.md by hand.
 - Build: a venv with `pip install -r docs/requirements.txt`, then `mkdocs build --strict`
   (`NO_MKDOCS_2_WARNING=1` hides the end-of-life banner).
 - Preview: `mkdocs serve -a 127.0.0.1:8000`.

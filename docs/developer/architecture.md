@@ -54,7 +54,32 @@ flowchart TB
 | `map` → `odom` | GLIM | the same |
 | wheel odometry | none (`odom_frame: none`) | none: TrackedVehicle's odometry is not bridged |
 
-!!! planned "Planned content (G3)"
-    - The launch graph.
-    - A per-sensor data flow, with rates.
-    - The TF tree, generated from the URDF.
+## Data flow per sensor
+
+The path of each sensor from Gazebo to the robot interface. The
+rates are measured in sim time (see [Topics and frames](../reference/topics-frames.md)). The launch
+graph is on [Launch files](launch-files.md).
+
+| Sensor | Bridge (Gazebo → ROS) | Raw topic | Driver emulation | Robot-interface topic | Rate [Hz] |
+|---|---|---|---|---|---|
+| Lidar | `sim_bridge_lidar_raw` | `/sim/velodyne_points_raw` | `velodyne_emulation` | `/velodyne_points` | 10 |
+| | | | `velodyne_laserscan_node` (from `/velodyne_points`) | `/scan` | 10 |
+| IMU | `sim_bridge_imu` | — | — | `/imu/data` | 200 |
+| GNSS | `sim_bridge_gnss` | — | — | `/gnss` | 10 |
+| RealSense colour | `sim_bridge_<cam>_cam_image` | — | — | `color/image_raw` (+ transports) | 30 |
+| | `sim_bridge_<cam>_cam` | — | — | `color/camera_info` | 30 |
+| RealSense depth | `sim_bridge_<cam>_cam` | `/sim/<cam>_camera/depth_raw` (32FC1, m) | `sim_<cam>_camera_depth_to_mm` | `aligned_depth_to_color/image_raw` (16UC1, mm) | 30 |
+| | `sim_bridge_<cam>_cam_depth_info` | — | — | `aligned_depth_to_color/camera_info` | 30 |
+| RealSense cloud | `sim_bridge_<cam>_cam` | `/sim/<cam>_camera/points_raw` (optical frame) | `sim_<cam>_camera_points_restamp` | `depth/color/points` (`<cam>_camera_depth_frame`) | 30 |
+| Ground truth | `sim_bridge` | — | — | `/sim/ground_truth/odom` (simulation only) | 100 |
+
+The camera topics are under `/<cam>_camera/camera/`. The RealSense TF tree comes from
+`sim_realsense_tf`. `/clock` comes from `sim_clock_bridge` (1 kHz measured in
+`office_cpr`).
+
+## TF tree
+
+The simulator alone (`launch_sim`) publishes only static transforms. With the stack running,
+GLIM adds `map` → `odom` and the EKF adds `odom` → `base_link`, as on the robot.
+
+--8<-- "docs/includes/generated/tf_tree.md"

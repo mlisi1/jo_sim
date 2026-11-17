@@ -59,6 +59,6 @@ At every container start, `entrypoint.sh` builds the mounted packages with colco
 Uncomment the glim_ros2 volume in `compose.yaml` and set `EXTRA_BUILD_PACKAGES=glim_ros` in `.env`:
 your checkout is rebuilt at every container start.
 
-!!! planned "Planned content"
-    Sharing Dockerfile fragments with jo-zotac (postponed), and a `headless` compose setup for CI
-    (it depends on the CI decision).
+!!! note "Not planned"
+    - **A headless compose setup for CI:** the simulator has no CI (see [Testing](testing.md#ci)).
+    - **Sharing Dockerfile fragments with jo-zotac:** postponed.
