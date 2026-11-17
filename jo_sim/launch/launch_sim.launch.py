@@ -5,6 +5,7 @@ topics, frame ids and TF ownership. The stack (jo_navigation) is NOT launched he
 sim_bringup.launch.py for the jo_bringup-equivalent entry point.
 
     ros2 launch jo_sim launch_sim.launch.py world:=warehouse sens_rviz:=true
+    ros2 launch jo_sim launch_sim.launch.py gui:=false paused:=true rtf:=2
     ros2 run jo_sim list_worlds
 """
 import os
@@ -48,6 +49,10 @@ def bridge(name, config, condition=None):
     )
 
 
+def truthy(value):
+    return value.strip().lower() in ('true', '1', 'yes', 'on')
+
+
 def settings_from(context):
     """World path and its settings (command line > sidecar <world>.yaml > defaults)."""
     world = resolve_world(LaunchConfiguration('world').perform(context))
@@ -58,9 +63,19 @@ def settings_from(context):
 
 def world_and_gazebo(context):
     world, st = settings_from(context)
-    patched, changes = prepare_world(world, st['latitude'], st['longitude'], st['elevation'])
-    gui = LaunchConfiguration('gui').perform(context).lower() in ('true', '1')
-    gz_args = f"-r -v{LaunchConfiguration('gz_verbosity').perform(context)} "
+    rtf = LaunchConfiguration('rtf').perform(context).strip()
+    if rtf:
+        try:
+            rtf = float(rtf)
+        except ValueError:
+            raise RuntimeError(f'[jo_sim] rtf:={rtf}: not a number') from None
+        if rtf < 0:
+            raise RuntimeError(f'[jo_sim] rtf:={rtf:g}: must be >= 0 (0 = as fast as possible)')
+    patched, changes = prepare_world(world, st['latitude'], st['longitude'], st['elevation'],
+                                     rtf=rtf if rtf != '' else None)
+    gui = truthy(LaunchConfiguration('gui').perform(context))
+    paused = truthy(LaunchConfiguration('paused').perform(context))
+    gz_args = ('' if paused else '-r ') + f"-v{LaunchConfiguration('gz_verbosity').perform(context)} "
     if not gui:
         gz_args += '-s --headless-rendering '
 
@@ -76,7 +91,10 @@ def world_and_gazebo(context):
             os.path.join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')),
         launch_arguments={'gz_args': gz_args + patched, 'on_exit_shutdown': 'true'}.items(),
     ))
-    if gui and LaunchConfiguration('follow').perform(context).lower() in ('true', '1'):
+    if paused:
+        actions.append(LogInfo(msg='[jo_sim] paused: press play in the Gazebo GUI, or run '
+                                   '`ros2 run jo_sim sim_control play`'))
+    if gui and truthy(LaunchConfiguration('follow').perform(context)):
         # Gazebo GUI camera follows the robot (scripts/gui_follow)
         actions.append(ExecuteProcess(
             cmd=[os.path.join(get_package_prefix(PKG), 'lib', PKG, 'gui_follow'), 'jo'],
@@ -110,6 +128,12 @@ def generate_launch_description():
         DeclareLaunchArgument('gui', default_value='true', description='Open the Gazebo GUI'),
         DeclareLaunchArgument('follow', default_value='true',
                               description='Gazebo GUI camera follows the robot'),
+        DeclareLaunchArgument('paused', default_value='false',
+                              description='Start with the simulation paused (play in the GUI or '
+                                          '`ros2 run jo_sim sim_control play`)'),
+        DeclareLaunchArgument('rtf', default_value='',
+                              description="Target real-time factor; empty = the world's own (usually 1), "
+                                          '0 = as fast as possible'),
         DeclareLaunchArgument('gz_verbosity', default_value='3'),
         DeclareLaunchArgument('sens_rviz', default_value='false',
                               description='RViz with the simulated sensors (as sens_rviz in jo_bringup)'),

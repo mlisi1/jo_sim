@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# jo_sim host wrapper: starts the container if needed and runs the simulator inside it.
+#
+#   ./jo sim [options] [name:=value ...]   world + robot (+ navigation stack)
+#   ./jo shell                             bash in the container
+#   ./jo up | down | build                 start / stop the container, rebuild the workspace
+#   ./jo worlds | check [args]             list worlds, run check_worlds
+#   ./jo ctl play|pause|step [N]|status    control the running simulation
+#
+# Run `./jo help` for the sim options.
+set -euo pipefail
+
+DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
+SERVICE=jo-sim
+compose() { docker compose --project-directory "$DIR" -f "$DIR/compose.yaml" "$@"; }
+
+usage() {
+  cat <<'EOF'
+usage: ./jo [--domain N] [--partition NAME] <command> [args]
+
+  --domain N, --partition NAME   ROS_DOMAIN_ID / GZ_PARTITION for the command (default: the
+                                 container's, from .env); e.g. a second, separate simulation
+
+  sim [options] [name:=value ...]   launch the simulator (sim_bringup.launch.py)
+      -w, --world NAME      world name or path (default: office_cpr; ./jo worlds lists them)
+      -n, --nav MODE        none (sensors only, default) | local (= full_navigation)
+                            | gps (= full_gps_navigation)
+      -s, --spawn NAME      named spawn pose from the world's sidecar yaml
+      --headless            no Gazebo GUI
+      --no-rviz             no RViz
+      --paused              start paused (play in the GUI, or ./jo ctl play)
+      --rtf X               target real-time factor (0 = as fast as possible)
+      --no-noise            sensor noise off
+      --glim-view           open GLIM's viewer window (-n local or gps)
+      name:=value           passed to the launch file as is (x:=2.0 yaw:=1.57 glim_view:=true ...)
+  shell                     bash in the container
+  stop                      stop the running simulation (e.g. left running by a closed terminal)
+  up | down                 start (building the image the first time) / stop the container
+  build                     colcon build of the mounted packages (jo_sim jo_navigation jo_description)
+  worlds                    list the worlds (sim_worlds)
+  check [args]              check_worlds, e.g. ./jo check --robot office_cpr
+  ctl play|pause|step [N]|status   control the running simulation
+
+Examples:
+  ./jo sim -w small_city -n gps
+  ./jo sim --headless --paused --rtf 0 -n local x:=2.0
+  ./jo --domain 77 --partition test sim --headless    # alongside another simulation
+EOF
+}
+
+running() { [ -n "$(compose ps -q --status running "$SERVICE" 2>/dev/null)" ]; }
+
+up() {
+  running && return 0
+  echo "[jo] starting the container" >&2
+  compose up -d "$SERVICE"
+}
+
+# Run a command line in the container through an interactive bash, so ~/.bashrc sources
+# docker/utils/utilities.sh (waits for the workspace build, ROS environment, aliases) and DendROS.
+# `ros2` is then DendROS's shell function: never `exec ros2`, that runs the plain binary.
+# The host terminal type: `docker exec -t` sets TERM=xterm (8 colours), and DendROS's TUI needs
+# more (with 8 it fails to start and falls back to the classic output).
+ENV_ARGS=(-e "TERM=${TERM:-xterm-256color}")
+[ -n "${COLORTERM:-}" ] && ENV_ARGS+=(-e "COLORTERM=$COLORTERM")
+run() {
+  up
+  local tty=()
+  [ -t 0 ] && [ -t 1 ] || tty=(-T)
+  compose exec "${tty[@]}" "${ENV_ARGS[@]}" "$SERVICE" bash -ic "$1"
+}
+
+quote() { local out='' a; for a in "$@"; do out+=" $(printf '%q' "$a")"; done; echo "${out# }"; }
+
+sim() {
+  local world='' nav=none spawn='' gui=true rviz=true paused=false rtf='' noise=true extra=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -w|--world) world=${2:?--world needs a value}; shift ;;
+      -n|--nav) nav=${2:?--nav needs a value}; shift ;;
+      -s|--spawn) spawn=${2:?--spawn needs a value}; shift ;;
+      --headless) gui=false ;;
+      --no-rviz) rviz=false ;;
+      --paused) paused=true ;;
+      --rtf) rtf=${2:?--rtf needs a value}; shift ;;
+      --no-noise) noise=false ;;
+      --glim-view) extra+=(glim_view:=true) ;;
+      -h|--help) usage; exit 0 ;;
+      *:=*) extra+=("$1") ;;
+      *) echo "[jo] unknown sim option: $1 (./jo help)" >&2; exit 2 ;;
+    esac
+    shift
+  done
+
+  # Same flags as the container aliases (docker/utils/utilities.sh)
+  local args=(front_cam:=true back_cam:=true)
+  case "$nav" in
+    none) args+=(gnss:=true "sens_rviz:=$rviz") ;;
+    local) args+=(localization:=true navigation:=true "rviz:=$rviz") ;;
+    gps) args+=(gnss:=true localization_gps:=true navigation_gps:=true "rviz:=$rviz") ;;
+    *) echo "[jo] --nav: none, local or gps (got '$nav')" >&2; exit 2 ;;
+  esac
+  [ -n "$world" ] && args+=("world:=$world")
+  [ -n "$spawn" ] && args+=("spawn:=$spawn")
+  [ -n "$rtf" ] && args+=("rtf:=$rtf")
+  args+=("gui:=$gui" "paused:=$paused" "sim_noise:=$noise" "${extra[@]}")
+
+  run "$(quote ros2 launch jo_sim sim_bringup.launch.py "${args[@]}")"
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --domain) ENV_ARGS+=(-e "ROS_DOMAIN_ID=${2:?--domain needs a value}"); shift 2 ;;
+    --partition) ENV_ARGS+=(-e "GZ_PARTITION=${2:?--partition needs a value}"); shift 2 ;;
+    *) break ;;
+  esac
+done
+# Stop the jo_sim launches of this Gazebo partition: SIGINT to each launch's process group, so
+# gz sim and every node get it (signalling only `ros2 launch` can leave gz sim running).
+STOP='
+n=0
+for pid in $(pgrep -f "[r]os2 launch jo_sim"); do
+  tr "\0" "\n" < /proc/$pid/environ 2>/dev/null | grep -qx "GZ_PARTITION=$GZ_PARTITION" || continue
+  pg=$(ps -o pgid= -p $pid | tr -d " ")
+  [ -n "$pg" ] && kill -INT -- -$pg && n=$((n + 1)) && pgs="$pgs $pg"
+done
+for _ in $(seq 1 30); do
+  left=0; for pg in $pgs; do pgrep -g $pg >/dev/null && left=1; done
+  [ $left = 0 ] && break; sleep 1
+done
+for pg in $pgs; do pgrep -g $pg >/dev/null && kill -KILL -- -$pg; done
+echo "[jo] stopped $n launch(es) on Gazebo partition $GZ_PARTITION"
+'
+
+cmd=${1:-help}
+[ $# -gt 0 ] && shift
+case "$cmd" in
+  sim) sim "$@" ;;
+  shell) up; compose exec "${ENV_ARGS[@]}" "$SERVICE" bash ;;
+  up) up ;;
+  stop) running && run "$STOP" ;;
+  down) compose down ;;
+  build) run 'cd ~ && exec colcon build --symlink-install --packages-select jo_sim jo_navigation jo_description' ;;
+  worlds) run 'ros2 run jo_sim list_worlds' ;;
+  check) run "$(quote ros2 run jo_sim check_worlds "$@")" ;;
+  ctl) run "$(quote ros2 run jo_sim sim_control "$@")" ;;
+  help|-h|--help) usage ;;
+  *) echo "[jo] unknown command: $cmd" >&2; usage >&2; exit 2 ;;
+esac

@@ -16,13 +16,18 @@ Order: **A → DendROS/Testudo → B → C → E → F → D**.
 ## Where we left off (2026-11-17)
 
 `full_navigation` (GLIM) and `full_gps_navigation` work in the sim (Michele, 2026-11-16).
-This session is about **updating the simulator**: Michele said navigation/EKF tuning comes later.
+This work is about **updating the simulator**: Michele said navigation/EKF tuning comes later.
 
 **Done:**
 - Phase A
-- Phase B, completed this session (see "Phase B" below):
+- Phase B (see "Phase B" below):
   - `check_worlds --robot` and the physics-step cap: `500a0ae`
   - world sidecar yaml: `66908a4`
+- **Phase C** (2026-11-17, jo_sim commit "Phase C: ..."): `paused`, `rtf`, `sim_control`, host wrapper `./jo`
+  (DendROS TUI included). Michele tried it: "really good". `namespace` / `robot_name` deferred
+  (multi-robot), see "Phase C" below.
+- **RViz clouds as points** (Michele's preference): `sim.rviz` and jo_navigation `navigation.rviz`
+  (`9e37e8e`) use `Style: Points`, 3 px, instead of Flat Squares.
 - Velodyne emulation (4c)
 - GLIM startup investigation (2026-11-16, see "GLIM startup" below)
 - **GLIM keys in the sim config** (jo_navigation `5775a10`, jo_sim `584d132`). Details and the EKF
@@ -31,7 +36,8 @@ This session is about **updating the simulator**: Michele said navigation/EKF tu
 - **Testudo** (`c99519c`): integrated but parked. See "DendROS and Testudo".
 - **Image** (`c99519c`): glim_ros2 is pinned through the `GLIM_ROS_COMMIT` build arg, currently `da3fae1`.
 
-**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 23, jo_navigation 8, jo_description 1.
+**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 25, jo_navigation 9, jo_description 1.
+The jo_sim submodule pointers already include jo_navigation `9e37e8e`.
 Push the submodules first, so the superproject never points to unpushed commits.
 
 **Constraints:**
@@ -51,12 +57,19 @@ Push the submodules first, so the superproject never points to unpushed commits.
   - The glim_ros2 session (`~/glim_ros2`) coordinates GPU slots through SendMessage.
 
 ### Next session checklist
-1. **Phase C (launch ergonomics)**, next in the plan's order. Pending Michele's choice between
-   Phase C and D2 ground truth.
-   - Args `paused`, `rtf`, `namespace`, `robot_name`. `x y z yaw`, `gui`, `rviz` and `spawn` exist already.
-   - Host wrapper: `./jo sim --world warehouse --nav gps` around compose + launch.
-2. **D2 ground truth** (`/sim/ground_truth/odom`), the alternative. It is small, and it would
-   replace the slow `gz model -p` polling in the probes.
+1. **D2 ground truth** (`/sim/ground_truth/odom`), next. It is small, and it would replace the slow
+   `gz model -p` polling in the probes. Sim-only: nothing in the stack may consume it.
+2. **Open questions for Michele** (asked on 2026-11-17, not answered yet):
+   - **GLIM map auto-save in the sim.** Today GLIM saves only on `save_map` (to `saved_maps/<date_time>/`
+     on the host). On exit it dumps to `/tmp/dump` in the container, which is overwritten and lost.
+     Proposal: a sim-only launch argument (`glim_common.py` is shared with the robot) so each exit
+     dump goes to `saved_maps/sim_<date_time>/`. Default on or off still to be decided.
+   - **`TERM` in `compose.yaml`** (`TERM=${TERM:-xterm-256color}`), so a plain
+     `docker compose exec jo-sim bash` also gets the DendROS TUI. Needs the container recreated:
+     do it only when Michele has no sim running.
+   - **DendROS bug** (Michele's repo): with 8 colours its TUI crashes in `init_pair` and falls back to
+     classic silently. Offer an issue or a patch.
+   - `namespace` / `robot_name`: confirm they stay deferred (see "Phase C").
 3. **`check_worlds --robot` over all 51 worlds**, when the GPU is free: `check_worlds --robot`
    inside the container, ~70 s per world. Then look at `sim_worlds`.
 4. **Phases E, F, then D3 and track re-tuning.** Also the RTAB-Map build check (`BUILD_RTABMAP=true`,
@@ -71,7 +84,13 @@ Push the submodules first, so the superproject never points to unpushed commits.
      0.025). The glim_ros2 session reports it makes the GLIM viewer and offline_viewer unreadable.
      It is GUI only.
 
-**How to run (inside `docker exec -it jo_sim-jo-sim-1 bash`):**
+**How to run:**
+- From the host: `./jo sim [-w world] [-n none|local|gps] [--headless] [--paused] [--rtf X]
+  [--glim-view] [name:=value ...]`, `./jo ctl play|pause|step|status`, `./jo stop`, `./jo build`,
+  `./jo shell`. `./jo help` lists everything.
+- Tests through the wrapper: `./jo --domain 77 --partition jo_sim_test sim --headless --no-rviz`.
+  Then `./jo --domain 77 --partition jo_sim_test stop`. In a pseudo-tty (`script -qfc`), Ctrl-C works too.
+- Inside the container (`docker exec -it jo_sim-jo-sim-1 bash`):
 - Tests always use `GZ_PARTITION=jo_sim_test ROS_DOMAIN_ID=77`, never the user's domain 0 or
   partition `jo_sim`. `check_worlds --robot` uses its own partition and domain 78.
 - Stop launches by process group (`setsid ros2 launch ... &`, then `kill -INT -$PG`).
@@ -81,10 +100,12 @@ Push the submodules first, so the superproject never points to unpushed commits.
   out and rebuilds only glim_ros. To follow a newer commit, set it in `.env`, run
   `docker compose build` (about a minute), then `docker compose up -d`. glim_ros2 `dev` has newer
   commits (`9ea1bff`, `3838f5c`, `af79c6c`), none of them changing `glim_rosnode`.
-- **Left running** after the session; no background jobs or test launches.
-- **Test leftovers** in the container, lost when it is recreated:
-  - `/tmp/scratch`: probe scripts `run_health*.sh`, `testudo_light.yaml`;
-  - `/tmp/glimrep`: logs.
+- **Left running** after the session (2026-11-17 ~12:10). No sim, no background jobs or test
+  launches of this session.
+- **The glim_ros2 session's** container `glim_gpu_test` was running then (short GPU GLIM runs on
+  domain 88 about the robot config's parked drift, suspected `downsample_resolution 0.2`). Not ours:
+  leave it alone; its results go to Michele / that session.
+- **Test leftovers** in the container, lost when it is recreated: `/tmp/glimrep` (logs).
 
 ### GLIM keys and EKF (2026-11-17)
 - **Sim config `glim_config_bunker_sim`** (jo_navigation `5775a10`). Michele: "first in the sim,
@@ -166,7 +187,7 @@ Push the submodules first, so the superproject never points to unpushed commits.
 - `pkill -f "gz sim"` kills its own shell.
 - Xvfb for GUI tests is installed only in the running container (lost on rebuild).
 
-**Background jobs:** none running (2026-11-16 evening). No sim or GLIM process on the host.
+**Background jobs:** none of ours (2026-11-17 ~12:10).
 
 ---
 
@@ -366,6 +387,43 @@ Findings:
 
 - Args: `x y z yaw`, `gui:=false` (server only), `paused`, `rtf`, `rviz`, `namespace`, `robot_name`.
 - Host wrapper (`./jo sim --world warehouse --nav gps`) around compose + launch.
+
+**Done (2026-11-17):**
+- `paused:=true`: gz starts without `-r`. Play from the GUI or `sim_control play` (new script, alias
+  `sim_control`: `play | pause | step [N] | status`, finds the world's control service in the current
+  `GZ_PARTITION`).
+- `rtf:=X`: the preprocessor sets `<physics><real_time_factor>` (adds a 1 ms `<physics>` if the world
+  has none). Harmonic honours it: office_cpr ran at 0.50 with `rtf:=0.5`, and at ~2.3 with `rtf:=0`
+  (as fast as possible) while Spirula held the GPU at 100 %. `real_time_update_rate` is not what
+  sets the pace.
+- `./jo` host wrapper: `sim [-w world] [-n none|local|gps] [-s spawn] [--headless] [--no-rviz]
+  [--paused] [--rtf X] [--no-noise] [name:=value ...]`, plus `shell build worlds check ctl stop up
+  down`. It starts the container if needed and runs through `bash -ic`, so utilities.sh (build wait,
+  environment) applies. The global `--domain N --partition P` options select the ROS domain and Gazebo
+  partition. `-n local|gps` uses the same flags as `full_navigation` / `full_gps_navigation`.
+  - Verified headless: paused + step + play, rtf 0 / 0.5 / 1, `-n local` up to "Managed nodes are
+    active".
+  - Ctrl-C through a pseudo-tty stops every process.
+  - A client killed without a tty leaves the launch running in the container. `./jo stop` signals
+    the process group of each `ros2 launch jo_sim` whose `GZ_PARTITION` matches (SIGKILL after 30 s).
+    Signalling only `ros2 launch` left `gz sim` running.
+  - The commands run as `ros2 ...` inside `bash -ic`, never `exec ros2`: `ros2` is DendROS's shell
+    function (output piped through DendROS), and `exec` would run the plain binary. Michele noticed
+    it. `--glim-view` = `glim_view:=true`.
+  - The wrapper passes the host `TERM`: `docker exec -t` sets `TERM=xterm` (8 colours), and DendROS's
+    TUI then raises `ValueError: Color number is greater than COLORS-1 (7)` in `init_pair` and silently
+    falls back to the classic output. That is a DendROS bug (it should handle 8-colour terminals),
+    and it also hits a plain `docker compose exec jo-sim bash`.
+- **Deferred: `namespace` and `robot_name`.** They only matter for several robots, and the robot has
+  neither:
+  - the stack (jo_navigation) is not namespaced;
+  - the Gazebo sensor topics (`imu`, `gnss`, `<cam>_camera`, `velodyne_points`) are global names in
+    the jo_description `<gazebo>` tags;
+  - the cmd_vel bridge uses `/model/jo/cmd_vel`;
+  - TF frames carry no prefix.
+  A second robot needs all of these: xacro topic prefixes, templated bridge configs, a frame prefix
+  and a namespaced stack. For a second, separate simulation, use another domain and partition
+  (`./jo --domain 77 --partition other sim ...`).
 
 ## Phase D — Fidelity
 

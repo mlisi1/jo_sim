@@ -598,6 +598,21 @@ def _cap_step_size(world, changes):
                        '(sensors publish at most once per step: IMU at 200 Hz)')
 
 
+def _set_rtf(world, rtf, changes):
+    """Target real-time factor (<physics><real_time_factor>); 0 = as fast as possible."""
+    physics = world.findall('physics')
+    if not physics:
+        # Harmonic's defaults (1 ms step; the type is ignored, the engine is a plugin)
+        physics = [ET.SubElement(world, 'physics', {'name': 'default', 'type': 'ode'})]
+        ET.SubElement(physics[0], 'max_step_size').text = '0.001'
+    for p in physics:
+        elem = p.find('real_time_factor')
+        if elem is None:
+            elem = ET.SubElement(p, 'real_time_factor')
+        elem.text = f'{rtf:g}'
+    changes.append(f'real-time factor {rtf:g}' + (' (as fast as possible)' if rtf == 0 else ''))
+
+
 def _unique_names(world, changes):
     seen = {}
     for elem in world:
@@ -641,8 +656,9 @@ def _is_placeholder_datum(sc):
     return val('latitude_deg') == 0.0 and val('longitude_deg') == 0.0
 
 
-def prepare_world(world_path, latitude, longitude, elevation=0.0, out_dir=OUT_DIR):
-    """Write a patched copy of the world and return (path, list of changes)."""
+def prepare_world(world_path, latitude, longitude, elevation=0.0, out_dir=OUT_DIR, rtf=None):
+    """Write a patched copy of the world and return (path, list of changes).
+    rtf: target real-time factor (None = the world's own, 0 = as fast as possible)."""
     tree = ET.parse(world_path)
     root = tree.getroot()
     world = root.find('world')
@@ -687,6 +703,8 @@ def prepare_world(world_path, latitude, longitude, elevation=0.0, out_dir=OUT_DI
         _classic_default_diffuse(world, changes)
     _unique_names(world, changes)
     _cap_step_size(world, changes)
+    if rtf is not None:
+        _set_rtf(world, float(rtf), changes)
 
     os.makedirs(out_dir, exist_ok=True)
     out = os.path.join(out_dir, os.path.splitext(os.path.basename(world_path))[0] + '.sdf')

@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Play / pause / step the running simulation (any world), e.g. after `paused:=true` headless.
+#   sim_control play | pause | step [N] | status
+# Uses the Gazebo partition of the environment (GZ_PARTITION), like the launch files.
+set -euo pipefail
+
+usage() { echo "usage: sim_control play | pause | step [N] | status" >&2; exit 2; }
+[ $# -ge 1 ] || usage
+
+world=$(gz service -l 2>/dev/null | sed -n 's#^/world/\([^/]*\)/control$#\1#p' | head -n 1)
+if [ -z "$world" ]; then
+  echo "sim_control: no running simulation (GZ_PARTITION=${GZ_PARTITION:-default})" >&2
+  exit 1
+fi
+
+control() {
+  gz service -s "/world/$world/control" --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean \
+    --timeout 3000 --req "$1" | grep -q 'data: true' \
+    || { echo "sim_control: /world/$world/control refused '$1'" >&2; exit 1; }
+}
+
+status() {
+  timeout 5 gz topic -e -n 1 -t "/world/$world/stats" \
+    | awk -v w="$world" '
+        /^sim_time/ {s=1} /^real_time/ {s=0}
+        s && /^ *sec:/ {sec=$2} s && /^ *nsec:/ {nsec=$2}
+        /^real_time_factor/ {rtf=$2} /^paused/ {paused=$2}
+        END {printf "%s: %s, sim time %.1f s, RTF %.2f\n", w, (paused=="true" ? "paused" : "running"),
+                    sec + nsec / 1e9, rtf}'
+}
+
+case "$1" in
+  play) control 'pause: false' ;;
+  pause) control 'pause: true' ;;
+  step)
+    n=${2:-1}
+    [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -gt 0 ] || usage
+    control "pause: true, multi_step: $n"
+    sleep 0.5 ;;  # let the steps run before reading the stats
+  status) ;;
+  *) usage ;;
+esac
+status

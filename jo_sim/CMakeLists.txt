@@ -20,7 +20,7 @@ install(TARGETS frame_restamp velodyne_emulation DESTINATION lib/${PROJECT_NAME}
 ament_python_install_package(${PROJECT_NAME})
 
 install(
-  PROGRAMS scripts/list_worlds scripts/check_worlds scripts/realsense_tf scripts/gui_follow
+  PROGRAMS scripts/list_worlds scripts/check_worlds scripts/realsense_tf scripts/gui_follow scripts/sim_control
   DESTINATION lib/${PROJECT_NAME}
 )
 

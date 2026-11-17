@@ -20,6 +20,7 @@ alias no_gpu='__NV_PRIME_RENDER_OFFLOAD=0 __GLX_VENDOR_LIBRARY_NAME='
 alias sim='ros2 launch jo_sim launch_sim.launch.py sens_rviz:=true'
 alias sim_worlds='ros2 run jo_sim list_worlds'
 alias check_worlds='ros2 run jo_sim check_worlds'
+alias sim_control='ros2 run jo_sim sim_control'   # play | pause | step [N] | status
 
 # Same names and flags as jo-zotac (docker/utils/utilities.sh), on the simulator.
 # Extra simulator arguments can be appended, e.g. `full_navigation world:=warehouse`.

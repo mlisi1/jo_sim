@@ -56,6 +56,19 @@ docker compose up --build
 docker compose exec jo-sim bash
 ```
 
+### Or use the host wrapper
+`./jo` starts the container when needed (building the image the first time) and runs the command inside it:
+```bash
+./jo sim                                  # office_cpr, all sensors, Gazebo GUI + RViz
+./jo sim -w small_city -n gps             # world + full_gps_navigation
+./jo sim -n local --headless --paused --rtf 0 x:=2.0   # extra name:=value args go to the launch file
+./jo ctl play | pause | step 100 | status # control the running simulation
+./jo stop                                 # stop the running simulation
+./jo shell | build | worlds | check --robot office_cpr | up | down
+./jo help
+```
+`-n` is `none` (sensors only), `local` (= `full_navigation`) or `gps` (= `full_gps_navigation`). `--glim-view` opens GLIM's viewer window (same as `glim_view:=true`). Commands run through the container's interactive shell, so DendROS formats the output as in the container. `--domain N` / `--partition NAME` before the command run it on another ROS domain / Gazebo partition, e.g. a second simulation next to the first. Ctrl-C stops the launch; if the terminal is closed instead, the launch keeps running in the container: `./jo stop` stops it.
+
 ### Configuration
 `.env` holds the build options (`BUILD_RTABMAP`, `GLIM_ROS_REF`, `GLIM_ROS_COMMIT`, `DENDROS_VERSION`, `BUILD_JOBS`, `CUDA_ARCHS`) and runtime settings. `GLIM_ROS_COMMIT` pins a glim_ros2 commit on top of the cached `GLIM_ROS_REF` layer: changing it rebuilds only glim_ros (about a minute), not GLIM. RTAB-Map (visual odometry / visual SLAM) is built from source only with `BUILD_RTABMAP=true`; without it the localization stack runs without visual odometry.
 
@@ -72,13 +85,14 @@ full_navigation                       # front/back cameras + localization + loca
 full_gps_navigation                   # + GNSS, GPS localization and navigation
 ros2 launch jo_sim sim_bringup.launch.py localization:=true world:=office_cpr x:=2.0 yaw:=1.57
 ```
-Simulator-only arguments: `world`, `gui`, `follow` (Gazebo GUI camera follows the robot, default on), `x y z yaw` and `spawn` (named pose from the world's sidecar), `latitude longitude elevation` (GNSS datum for worlds without `<spherical_coordinates>`; all default to the sidecar), `sim_noise` (sensor noise on/off, default on), `lidar_range_stddev`, `glim_config`, `glim_anchor_frame` (default `base`).
+Simulator-only arguments: `world`, `gui`, `paused` (start paused: press play in the GUI, or `sim_control play`), `rtf` (target real-time factor, `0` = as fast as possible; default the world's own), `follow` (Gazebo GUI camera follows the robot, default on), `x y z yaw` and `spawn` (named pose from the world's sidecar), `latitude longitude elevation` (GNSS datum for worlds without `<spherical_coordinates>`; all default to the sidecar), `sim_noise` (sensor noise on/off, default on), `lidar_range_stddev`, `glim_config`, `glim_anchor_frame` (default `base`).
 
 #### Simulator only
 ```bash
 sim                                   # world + robot + all sensors + RViz
 sim_worlds                            # list the worlds that can be loaded by name (with check_worlds results)
 check_worlds                          # test which worlds load and run in real time
+sim_control play|pause|step [N]|status   # control the running simulation (e.g. after paused:=true)
 teleop                                # keyboard teleop
 ```
 
@@ -105,6 +119,9 @@ spawns:                       # named alternatives: sim world:=my_world spawn:=d
 gnss: {latitude: 43.72, longitude: 10.33, elevation: 48.0}   # used if the world has no <spherical_coordinates>
 ```
 In GPS mode the navsat heading offset follows the resolved spawn yaw.
+
+#### GLIM maps
+GLIM saves its map only when asked: `save_map` (in the container) writes it to `saved_maps/<date_time>/` on the host; open it with `offline_viewer`. On exit GLIM also dumps the map to `/tmp/dump` inside the container, which the next run overwrites and a container restart loses.
 
 #### Simulated sensors
 | Real sensor | Topics | Frame |
