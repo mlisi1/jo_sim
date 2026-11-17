@@ -3,29 +3,13 @@ FROM osrf/ros:jazzy-desktop-full
 ENV GZ_VERSION=harmonic
 ARG DISTRO=jazzy
 
-# ── Pinned versions (override with --build-arg or in .env) ─────────────────
+# ── Build arguments ────────────────────────────────────────────────────────
+# Each ARG is declared right before the first layer that uses it, not here. BuildKit puts every
+# declared ARG in the environment of the later RUNs, so changing one (e.g. BUILD_RTABMAP) would
+# otherwise invalidate every layer after its declaration: GLIM, gtsam_points, CUDA. Pinned versions:
+# CUDA_VERSION/CUDA_DIR, GTSAM_POINTS_REF, CUDA_ARCHS, BUILD_JOBS, RGL_REF, GLIM_REF, GLIM_ROS_REF,
+# NAV2_CONFIG_REF, BUILD_RTABMAP, RTABMAP_REF, RTABMAP_ROS_REF, DENDROS_VERSION, GLIM_ROS_COMMIT.
 # Keep GLIM / CUDA in sync with jo-zotac.
-ARG CUDA_VERSION=13-1
-ARG CUDA_DIR=13.1
-# koide3/glim; >= 1a197c9 needed by glim_ros2@dev (contains the a9be365 GTSAM 4.3 fix)
-ARG GLIM_REF=1a197c999e4865f5cab7c9cd25474128413ebbca
-# koide3/gtsam_points, built from source: GLIM master needs IndexedSlidingWindow::has_index,
-# which is newer than the last release (1.2.2, the newest version in the koide3 PPA)
-ARG GTSAM_POINTS_REF=8e94654558dfbe7ddb0341de300daaf17e25ee02
-# CUDA architectures for gtsam_points ("native" cannot work: no GPU during docker build).
-# all-major runs on any GPU; set e.g. 120 (RTX 50xx) in .env for a faster build.
-ARG CUDA_ARCHS=all-major
-# mlisi1/glim_ros2 branch / tag / commit
-ARG GLIM_ROS_REF=dev
-ARG RGL_REF=07b5f2ed244c9cfbd5ef12066d1c3e47f5eedbc6
-ARG NAV2_CONFIG_REF=6525a324cec2bd5d308dc7ad931888d9b745545b
-# RTAB-Map from source is slow and memory hungry
-ARG BUILD_RTABMAP=false
-ARG RTABMAP_REF=7d8b585217033e8d25d01b380a36744effe816df
-ARG RTABMAP_ROS_REF=3e1cdcb072ad21fa2b129412332760bd3e456279
-# DendROS release tag, or "latest"
-ARG DENDROS_VERSION=latest
-ARG BUILD_JOBS=8
 
 RUN apt update -y \
     && apt install -y python3-pip \
@@ -94,6 +78,8 @@ RUN wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/
  && mv cuda-ubuntu2404.pin /etc/apt/preferences.d/cuda-repository-pin-600
 
 # GTSAM 4.3 and iridescence from the koide3 PPA; gtsam_points from source (see GTSAM_POINTS_REF)
+ARG CUDA_VERSION=13-1
+ARG CUDA_DIR=13.1
 RUN curl -s https://koide3.github.io/ppa/setup_ppa.sh | bash \
  && add-apt-repository -y ppa:koide3/iridescence \
  && apt update -y \
@@ -109,9 +95,17 @@ RUN curl -s https://koide3.github.io/ppa/setup_ppa.sh | bash \
  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ENV PATH=/usr/local/cuda-${CUDA_DIR}/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_DIR}/lib64:${LD_LIBRARY_PATH}
+# ${VAR:+:$VAR}: no trailing ':' when unset (an empty entry means the current directory)
+ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_DIR}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
 ENV CUDAToolkit_ROOT=/usr/local/cuda-${CUDA_DIR}
 
+# koide3/gtsam_points, built from source: GLIM master needs IndexedSlidingWindow::has_index,
+# which is newer than the last release (1.2.2, the newest version in the koide3 PPA)
+ARG GTSAM_POINTS_REF=8e94654558dfbe7ddb0341de300daaf17e25ee02
+# CUDA architectures for gtsam_points ("native" cannot work: no GPU during docker build).
+# all-major runs on any GPU; set e.g. 120 (RTX 50xx) in .env for a faster build.
+ARG CUDA_ARCHS=all-major
+ARG BUILD_JOBS=8
 RUN mkdir -p /tmp/gtsam_points && cd /tmp/gtsam_points && git init -q \
  && git remote add origin https://github.com/koide3/gtsam_points.git \
  && git fetch -q --depth 1 origin ${GTSAM_POINTS_REF} && git checkout -q FETCH_HEAD \
@@ -148,6 +142,7 @@ RUN printf '%s\n' '#!/usr/bin/env bash' 'set -e' \
 
 
 # ── RGL GPU lidar plugin ───────────────────────────────────────────────────
+ARG RGL_REF=07b5f2ed244c9cfbd5ef12066d1c3e47f5eedbc6
 RUN clone_at https://github.com/RobotecAI/RGLGazeboPlugin.git ${RGL_REF} RGLGazeboPlugin \
  && cd RGLGazeboPlugin && mkdir build && cd build \
  && cmake .. && make -j${BUILD_JOBS} && make install \
@@ -161,6 +156,11 @@ ENV GZ_GUI_PLUGIN_PATH=/home/ros/RGLGazeboPlugin/install/RGLVisualize
 
 
 # ── Workspace: GLIM, glim_ros2, tools ──────────────────────────────────────
+# koide3/glim; >= 1a197c9 needed by glim_ros2@dev (contains the a9be365 GTSAM 4.3 fix)
+ARG GLIM_REF=1a197c999e4865f5cab7c9cd25474128413ebbca
+# mlisi1/glim_ros2 branch / tag / commit
+ARG GLIM_ROS_REF=dev
+ARG NAV2_CONFIG_REF=6525a324cec2bd5d308dc7ad931888d9b745545b
 RUN mkdir src \
  && clone_at https://github.com/koide3/glim.git ${GLIM_REF} src/glim \
  && clone_at https://github.com/mlisi1/glim_ros2.git ${GLIM_ROS_REF} src/glim_ros2 \
@@ -173,6 +173,9 @@ RUN source /opt/ros/${DISTRO}/setup.bash \
 # ── RTAB-Map (optional) ────────────────────────────────────────────────────
 # Same approach as jo-zotac: built one package at a time, because building the
 # ~14 rtabmap* packages in parallel runs out of memory.
+ARG BUILD_RTABMAP=false
+ARG RTABMAP_REF=7d8b585217033e8d25d01b380a36744effe816df
+ARG RTABMAP_ROS_REF=3e1cdcb072ad21fa2b129412332760bd3e456279
 RUN if [ "${BUILD_RTABMAP}" = "true" ]; then \
       clone_at https://github.com/introlab/rtabmap.git ${RTABMAP_REF} src/rtabmap \
    && clone_at https://github.com/introlab/rtabmap_ros.git ${RTABMAP_ROS_REF} src/rtabmap_ros \
@@ -183,6 +186,7 @@ RUN if [ "${BUILD_RTABMAP}" = "true" ]; then \
 
 
 # ── DendROS (latest release unless pinned) ─────────────────────────────────
+ARG DENDROS_VERSION=latest
 RUN TAG="${DENDROS_VERSION}" \
  && if [ "$TAG" = "latest" ]; then \
       TAG=$(git ls-remote --tags --refs --sort=-v:refname https://github.com/mlisi1/DendROS.git | head -1 | sed 's|.*/||'); fi \

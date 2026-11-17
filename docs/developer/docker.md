@@ -15,8 +15,39 @@ glim_ros2, the RGL plugin, Nav2 configs, DendROS, Testudo's dependencies, and op
 8. `GLIM_ROS_COMMIT`: checks out a glim_ros2 commit and rebuilds only glim_ros. It is declared late,
    so changing it doesn't invalidate the earlier layers.
 
-Pinned versions (GLIM, gtsam_points, RGL, nav2_config, RTAB-Map) are `ARG`s at the top of
+Pinned versions (GLIM, gtsam_points, RGL, nav2_config, RTAB-Map) are `ARG`s in
 `docker/Dockerfile`. Keep GLIM and CUDA in sync with jo-zotac.
+
+!!! warning "Declare each ARG right before the layer that uses it"
+    BuildKit puts every declared `ARG` in the environment of all the `RUN`s after it. If an ARG is
+    declared at the top, changing it, even `BUILD_RTABMAP`, invalidates every layer: CUDA,
+    gtsam_points, GLIM, about an hour of build. Declared next to its layer, it invalidates only that
+    layer and the ones after it.
+
+## Building
+
+`docker compose build` reads the build arguments from `.env`. To try a variant without touching
+your image, build it under another tag. It shares every cached layer before the first argument
+that differs:
+
+```bash
+set -a; . ./.env; set +a
+docker build --network host -f docker/Dockerfile -t jo-sim:rtabmap \
+  --build-arg BUILD_RTABMAP=true --build-arg GLIM_ROS_COMMIT=$GLIM_ROS_COMMIT \
+  --build-arg BUILD_JOBS=$BUILD_JOBS --build-arg CUDA_ARCHS=$CUDA_ARCHS .
+```
+
+With a warm cache, the RTAB-Map variant takes about 20 minutes on 8 jobs. A full build from
+scratch takes about an hour.
+
+## Graphics
+
+`compose.yaml` sets the NVIDIA PRIME render-offload variables. That's right for hybrid graphics
+(desktop on the integrated GPU, rendering on NVIDIA). If the display runs on the NVIDIA GPU, set
+`NV_PRIME_RENDER_OFFLOAD=` and `GLX_VENDOR_LIBRARY_NAME=` (empty) in `.env`.
+
+The RGL lidar needs CUDA, so there is no CPU-only mode: without an NVIDIA GPU the simulation runs,
+but it has no lidar.
 
 ## Entrypoint
 
@@ -28,6 +59,6 @@ At every container start, `entrypoint.sh` builds the mounted packages with colco
 Uncomment the glim_ros2 volume in `compose.yaml` and set `EXTRA_BUILD_PACKAGES=glim_ros` in `.env`:
 your checkout is rebuilt at every container start.
 
-!!! planned "Planned content (Phase F, then G3)"
-    The base and workspace image split, compose profiles (`nvidia`, `cpu`, `headless`), and sharing
-    fragments with jo-zotac.
+!!! planned "Planned content"
+    Sharing Dockerfile fragments with jo-zotac (postponed), and a `headless` compose setup for CI
+    (it depends on the CI decision).

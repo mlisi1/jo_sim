@@ -552,6 +552,30 @@ Findings:
 
 ## Phase F — Docker
 
+**Status (2026-11-17): done, as far as it applies.**
+- **ARGs moved next to the layers that use them.** BuildKit puts every declared ARG in the
+  environment of the later RUNs, so `BUILD_RTABMAP` at the top rebuilt CUDA, gtsam_points and GLIM.
+  - Verified: `jo-sim:rtabmap` reused steps 1–16 of the default build; only RTAB-Map and the
+    steps after it were rebuilt (15 min).
+- **`LD_LIBRARY_PATH` had a trailing ':'**, an empty entry, which means the current directory.
+  Fixed with `${VAR:+:$VAR}`.
+- **PRIME offload variables:** overridable from `.env` (`NV_PRIME_RENDER_OFFLOAD`,
+  `GLX_VENDOR_LIBRARY_NAME`). The defaults are unchanged.
+- **Already true:** the base / thin workspace split (the mounted packages are built by the
+  entrypoint, about 1 s when unchanged), and the entrypoint rebuilding only on change (colcon).
+- **Not done:**
+  - `cpu` profile: the RGL lidar needs CUDA, so a CPU-only sim has no lidar.
+  - `headless` profile: only needed for CI. Michele questioned whether the sim needs CI at all.
+  - Sharing fragments with jo-zotac: postponed by Michele.
+- **The user's container was recreated on the new image** (Michele's OK), and `office_out_and_back`
+  PASSes on it.
+- **RTAB-Map check, done:** `jo-sim:rtabmap` (BUILD_RTABMAP=true) in a temporary container, with
+  `visual_odom.launch.py` (rgbd_odometry, compressed + compressedDepth, front camera) in office_cpr.
+  - 3 m straight: 2.982 m vs 2.996 m ground truth (1.5 cm, 0.1°).
+  - 90° turn in place: 88.5° vs 88.2° (0.3°).
+  - Never lost, about 30 Hz, no warnings.
+  - So the 16UC1 depth (D1) works end to end through compressedDepth.
+
 - Base image (ROS, Gazebo, CUDA, RGL, GLIM, RTAB-Map) + thin workspace layer.
 - Compose profiles `nvidia` (default) / `cpu` / `headless`; no hard-coded PRIME offload vars.
 - Entrypoint rebuilds only when sources changed.
