@@ -38,15 +38,27 @@ Push the submodules first, so the superproject never points to unpushed commits.
   RAM. Check `free -h` and `nvidia-smi` before a test batch; the host got close to OOM twice this session.
 
 ### Next session checklist
-1. **Ask Michele about the missing GLIM keys** (he said "later"). These are not in either jo_navigation
-   GLIM config, so GLIM uses defaults: `odometry_estimation/compute_covs`, `sensors/ring_field: ring`,
-   `glim_ros/image_topic: ""`, `glim_ros/anchor_frame: base`, `preprocess/enable_cropbox_filter`,
-   `odometry_estimation/validate_imu`, `global/config_logging`, `sub_mapping/submap_target_num_points`.
-   - `compute_covs` makes GLIM's reported variances ~30x smaller (glim_ros2 session, testudo bag: pos
-     3.3e-4 m², rot 1.6e-4 rad²), so the EKF trusts GLIM much more: check the `odom0` tuning in
-     `localization*.yaml` with it.
-   - `image_topic: ""` removes the image subscription (no module uses images).
-   - `anchor_frame: base` puts the map/odom origin at the initial base pose instead of the IMU.
+1. **Missing GLIM keys: done in the sim only** (2026-11-17, jo_navigation `5775a10`, jo_sim `584d132`).
+   Michele: "first in the sim, then we'll evaluate"; `glim_config_bunker` (robot) is untouched.
+   - `glim_config_bunker_sim`: `compute_covs: true`, `ring_field: ring`, `intensity_field`,
+     `image_topic: ""`, and explicit defaults `ang_scale`, `config_logging`, `enable_cropbox_filter`,
+     `validate_imu`. `submap_target_num_points` was already set in the GPU/passthrough sub_mapping files.
+   - `glim_anchor_frame` launch argument (`glim_common.py`): `imu` by default (robot unchanged), jo_sim
+     passes `base`. Verified: GLIM odometry and `odometry/filtered` start at 0 (sub-mm).
+   - **compute_covs A/B in the sim** (office_cpr, 3+3 runs, straight / 180° turn / straight): EKF end
+     error at rest 1-7 mm with, 4-10 mm without; no degradation. But sim GLIM variances are ~1e-7 m²
+     (near-noiseless sim) vs 3.3e-4 on the testudo bag: **the sim cannot validate the robot odom0
+     tuning**; that needs the bag or the robot.
+   - **Found: EKF velocity is poor in both configs** (not caused by compute_covs). `odom0` fuses only
+     GLIM x, y, yaw, so EKF `vx` comes from IMU accel + position corrections: 0.11-0.13 m/s in the
+     first second of a 0.5 m/s drive (GLIM 0.41-0.45), then 0.57 steady (GLIM 0.483, sd 0.003).
+     The EKF output saw-tooths: jumps of 11-28 mm at each GLIM update. Candidate fix, **deferred**
+     (Michele: navigation tuning comes later, the current sessions are about the simulator):
+     fuse GLIM `vx, vy, vyaw` in `odom0` (GLIM's twist is in base_link with its covariance); test it
+     with a variant yaml through `localization_params:=`. Probe scripts: `probe_ekf.py`,
+     `analyze_ekf.py`, `jumps_ekf.py`, `run_ekf.sh` in the container's `/tmp/scratch`, data in
+     `/tmp/glimrep/ekf` (lost when the container is recreated).
+   - Later, with Michele: whether to apply the keys to the robot config `glim_config_bunker`.
 2. **GPU check on the real data (glim_ros2 session, waiting for Michele's go-ahead):** the robot's
    `glim_config_bunker` with GPU GLIM on the testudo bag, in a throwaway container from the jo-sim image.
    It needs several GiB of RAM and the GPU: run it only when Spirula is not building.
