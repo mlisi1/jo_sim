@@ -11,7 +11,7 @@ The working roadmap, with session notes, is
 | D1: sensor fidelity (noise, Velodyne fields) | :material-progress-wrench: RealSense depth encoding to be evaluated |
 | D2: ground truth | :material-check-circle: done |
 | D3: dynamic obstacles | :material-circle-outline: planned |
-| Track model re-tuning | :material-circle-outline: planned |
+| Track model re-tuning (steering calibrated against the ground truth) | :material-check-circle: done |
 | E: testing workflow (scenarios, bags, CI) | :material-circle-outline: planned |
 | F: Docker (base image, compose profiles) | :material-circle-outline: planned |
 | G: this documentation site | :material-progress-wrench: in progress |
