@@ -57,6 +57,13 @@
   --jo-glow: #0e749026;
 }
 
+/* Logo: the Jo render, a bit larger than Material's default 1.2rem */
+.md-header__button.md-logo img {
+  height: 1.9rem;
+  width: auto;
+  filter: drop-shadow(0 0 6px #06b6d455);
+}
+
 /* Header and tabs: navy with a thin cyan scan line */
 .md-header, .md-tabs {
   background: linear-gradient(90deg, var(--jo-navy-950), var(--jo-navy-800));
@@ -122,9 +129,9 @@
   overflow: hidden;
   color: #e2e8f0;
   background:
-    radial-gradient(circle at 85% 20%, #06b6d433 0, transparent 45%),
+    radial-gradient(circle at 84% 52%, #06b6d440 0, transparent 38%),
     radial-gradient(circle at 10% 110%, #f59e0b26 0, transparent 40%),
-    repeating-radial-gradient(circle at 85% 20%, transparent 0 22px, #22d3ee14 22px 23px),
+    repeating-radial-gradient(circle at 84% 52%, transparent 0 22px, #22d3ee14 22px 23px),
     linear-gradient(135deg, var(--jo-navy-950), var(--jo-navy-800));
   border: 1px solid var(--jo-border);
 }
@@ -133,7 +140,27 @@
   font-size: 2.6rem;
   color: #f8fafc;
 }
-.jo-hero h1 .jo-accent { color: var(--jo-cyan-400); }
+/* The Jo render, on the right of the hero, over the "lidar rings" */
+.jo-hero-art {
+  position: absolute;
+  right: 3%;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 88%;
+  max-height: 22rem;
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+.md-typeset .jo-hero-art img {
+  height: 100%;
+  width: auto;
+  filter: drop-shadow(0 18px 24px #0008) drop-shadow(0 0 30px #06b6d433);
+}
+.jo-hero p.jo-tagline, .jo-hero .jo-badges { max-width: 58%; }
+@media screen and (max-width: 60em) {
+  .jo-hero-art { display: none; }
+  .jo-hero p.jo-tagline, .jo-hero .jo-badges { max-width: none; }
+}
 .jo-hero p.jo-tagline {
   max-width: 38rem;
   font-size: 1.05rem;

@@ -7,7 +7,9 @@ hide:
 
 <div class="jo-hero" markdown>
 
-# jo<span class="jo-accent">_sim</span>
+<div class="jo-hero-art"><img src="assets/images/jo_render.png" alt="Jo, rendered from its URDF"></div>
+
+# jo_sim
 
 <p class="jo-tagline">The simulator of <strong>Jo</strong>, a tracked field robot. It exposes the
 <strong>same ROS 2 interface as the real robot</strong>: topics, message types, frame ids, TF

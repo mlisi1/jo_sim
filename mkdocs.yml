@@ -9,10 +9,10 @@ copyright: Copyright &copy; 2026 mlisi1
 theme:
   name: material
   language: en
+  logo: assets/images/jo_logo.png
+  favicon: assets/images/favicon.png
   icon:
-    logo: material/robot-industrial
     repo: fontawesome/brands/github
-  favicon: assets/images/favicon.svg
   font:
     text: Inter
     code: JetBrains Mono
@@ -121,6 +121,7 @@ markdown_extensions:
 
 exclude_docs: |
   /includes/
+  /gen/
   /requirements.txt
 
 nav:
