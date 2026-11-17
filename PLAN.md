@@ -622,4 +622,7 @@ Scripts in `docs/gen/` rebuild these tables, and CI fails if they are out of dat
   Zensical, reads the same `mkdocs.yml`: migrate before then.
 - **Checking the look without the GPU:** headless Chrome with `--disable-gpu`. For the dark scheme,
   first set the localStorage key `/.__palette` to scheme `slate` in the same profile.
+- **Logo, favicon and home render** (Michele's choice): Jo rendered from the URDF, with a
+  transparent background, by `docs/gen/render_logo/render.sh`. CPU only: Blender Cycles on the CPU,
+  with CUDA hidden. Run it again if the URDF's look changes.
 - **Open:** who records the videos.
