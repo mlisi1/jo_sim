@@ -82,7 +82,12 @@ def run(name, args):
             try:
                 proc.wait(30)
             except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)
+                pass
+        # ros2 launch can exit while gz sim survives (seen in the thumbnail batch): kill what's left
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
         time.sleep(5)
 
 

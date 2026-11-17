@@ -16,11 +16,11 @@ Worlds are searched in this order:
 
 A path works too.
 
-<div class="media-ph" data-kind="image" markdown>
-<span class="media-ph-kind">Image</span>
-<p>World catalogue: a grid of thumbnails, one per world, each with its name, size, check_worlds
-status, GNSS datum and spawn poses. Generated (G3/G4).</p>
-</div>
+## Catalogue
+
+--8<-- "docs/includes/generated/world_catalogue.md"
+
+The full results, slow and broken worlds included, are in [Checking worlds](#checking-worlds-check_worlds).
 
 ## Adding your own world
 

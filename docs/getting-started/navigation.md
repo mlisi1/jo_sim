@@ -20,11 +20,12 @@ the robot (jo-zotac).
 Wait for `Managed nodes are active` in the output, then send a goal with RViz's
 **2D Goal Pose** tool.
 
-<div class="media-ph" data-kind="video" markdown>
-<span class="media-ph-kind">Video</span>
-<p>Local navigation in office_cpr: a 2D Goal Pose in RViz, the planned path, the costmaps, Jo
-reaching the goal.</p>
-</div>
+<figure class="jo-media">
+<video src="../../assets/videos/nav_local.mp4" poster="../../assets/videos/nav_local.jpg" controls muted loop playsinline preload="none"></video>
+<figcaption>Local navigation in office_cpr: a goal 4.5 m down the corridor, then back. RViz shows the
+costmaps, the planned path and the lidar. The goals go to <code>/goal_pose</code>, as the 2D Goal Pose
+tool does.</figcaption>
+</figure>
 
 The lidar starts 2 s (sim time) after spawn. The robot is spawned slightly above the ground and
 drops, and GLIM must initialize with the robot at rest.

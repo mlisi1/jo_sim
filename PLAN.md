@@ -63,6 +63,10 @@ publishes the docs site.
    `/cmd_vel`, `sim_control`; RViz goals sent as topics). GPU use for the screenshots, the videos and
    the thumbnail renderer is OK **when it's free**: check `nvidia-smi` first and coordinate with the
    other sessions through SendMessage (testudo-c2 was watching domain 77 on 2026-11-17).
+   - **Where:** on Michele's display `:0`, **external monitor HDMI-1-0** (2560×1440 at x=2560), not a
+     virtual display (Xvfb works but renders the GUIs in software, ~10 fps). Warn Michele before each
+     batch. Windows are placed with `docs/gen/media/kwin_place.sh` (KWin script, Plasma 5.27) and
+     captured with ffmpeg x11grab. Final videos 1920×1080.
 2. **G4, the media.** 31 placeholders: `grep -rn 'class="media-ph' docs` (8 images, 7 videos, the
    rest diagrams/screenshots). For each, the caption in the placeholder says what to show.
    - **Screenshots:** Gazebo GUI, RViz in each mode, the sensor views (cloud, cameras, depth), the

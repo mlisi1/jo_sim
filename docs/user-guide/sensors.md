@@ -10,11 +10,11 @@ Each simulated sensor publishes the topics, message types and frame ids of the r
 | RealSense D456, front and back | `/<cam>_camera/camera/color/image_raw`, `.../color/camera_info`, `.../aligned_depth_to_color/image_raw`, `.../aligned_depth_to_color/camera_info`, `.../depth/color/points` | `<cam>_camera_color_optical_frame` (cloud: `<cam>_camera_depth_frame`) | 30 Hz |
 | Bunker base | `/cmd_vel` in. No odometry, as on the robot. | | |
 
-<div class="media-ph" data-kind="image" markdown>
-<span class="media-ph-kind">Image</span>
-<p>The sensors in RViz: the lidar cloud coloured by ring, the front and back colour images, the
-depth images, the camera clouds.</p>
-</div>
+<figure class="jo-media">
+<img src="../../assets/images/sensors_rviz.jpg" alt="The simulated sensors in RViz" loading="lazy">
+<figcaption>The sensors in RViz (<code>sim.rviz</code>): the lidar cloud coloured by height, the two
+camera clouds in the scene's colours, and the front and back colour images on the left.</figcaption>
+</figure>
 
 ## Driver emulation
 

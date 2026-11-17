@@ -237,6 +237,24 @@
 .media-ph[data-kind="video"] .media-ph-kind { color: var(--jo-amber-500); }
 .media-ph p { margin: 0; max-width: 34rem; font-size: 0.8rem; }
 
+/* ── Real media (videos and screenshots in docs/assets) ─────────── */
+.md-typeset figure.jo-media { margin: 1.2em 0; max-width: 100%; }
+.md-typeset figure.jo-media video,
+.md-typeset figure.jo-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.4rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: #000;
+}
+.md-typeset figure.jo-media figcaption {
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+  max-width: none;
+  margin-top: 0.5em;
+}
+
 /* ── Status pill for pages still being written ──────────────────── */
 .md-typeset .admonition.planned,
 .md-typeset details.planned {
