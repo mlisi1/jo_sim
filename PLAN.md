@@ -13,114 +13,117 @@ Order: **A → DendROS/Testudo → B → C → E → F → D**.
 
 ---
 
-## Where we left off (2026-11-17)
+## Where we left off (2026-11-17, end of day)
 
-`full_navigation` (GLIM) and `full_gps_navigation` work in the sim (Michele, 2026-11-16).
-This work is about **updating the simulator**: Michele said navigation/EKF tuning comes later.
+**Implementation is essentially finished.** Every simulator item Michele approved is done, tested and
+pushed to `dev`. What's left is documentation (Phase G: G2–G5 and the media) and the items Michele
+put on hold. `dev` is merged into `main` only when everything is finished (Michele); the merge also
+publishes the docs site.
 
-**Done:**
-- Phase A
-- Phase B (see "Phase B" below):
-  - `check_worlds --robot` and the physics-step cap: `500a0ae`
-  - world sidecar yaml: `66908a4`
-- **Phase C** (2026-11-17, jo_sim commit "Phase C: ..."): `paused`, `rtf`, `sim_control`, host wrapper `./jo`
-  (DendROS TUI included). Michele tried it: "really good". `namespace` / `robot_name` not planned
-  (multi-robot), see "Phase C" below.
-- **D2 ground truth** (2026-11-17): `/sim/ground_truth/odom`, see "Phase D" below.
-- **RViz clouds as points** (Michele's preference): `sim.rviz` and jo_navigation `navigation.rviz`
-  (`9e37e8e`) use `Style: Points`, 3 px, instead of Flat Squares.
-- Velodyne emulation (4c)
-- GLIM startup investigation (2026-11-16, see "GLIM startup" below)
-- **GLIM keys in the sim config** (jo_navigation `5775a10`, jo_sim `584d132`). Details and the EKF
-  findings are in "GLIM keys and EKF (2026-11-17)" below.
-- **DendROS** (`b10329f`): global settings copied from Michele's host, image stays at v1.1.0. See "DendROS and Testudo".
-- **Testudo** (`c99519c`): integrated but parked. See "DendROS and Testudo".
-- **Image** (`c99519c`): glim_ros2 is pinned through the `GLIM_ROS_COMMIT` build arg, currently `da3fae1`.
+**Done** (details in each phase below; jo_sim commits on `dev`):
+- **Phases A, B, C:** stack sync, drop-in worlds with sidecars, the `./jo` wrapper, pause/step/RTF.
+- **D1 RealSense depth** as the driver publishes it (16UC1 mm, `depth_to_mm`): `6191c56`.
+- **D2 ground truth:** `/sim/ground_truth/odom`.
+- **D3 moving obstacles:** the `WaypointMover` Gazebo system and `obstacles:=`: `08dff26`.
+- **Track re-tuning:** `steering_efficiency` 0.707, jo_description `6be30be`.
+- **Phase E scenarios:** `./jo scenario`, `office_out_and_back`, `office_crossing`: `d0c046b`.
+- **Phase F Docker:** ARGs next to their layers, LD_LIBRARY_PATH, PRIME variables: `b05ff9f`.
+- **RTAB-Map build and visual odometry check:** 1.5 cm over 3 m, see Phase F.
+- **check_worlds --robot over all 51 worlds:** `3133ce3`. Results table in
+  `docs/user-guide/worlds.md`. Michele: making the 15 broken worlds load is NOT needed (a Gazebo
+  Classic collection).
+- **Testudo:** green on the full stack, submodule at testudo dev `32f7473`: `5218f6b`.
+- **G1 docs site:** skeleton, theme, CI, `AGENTS.md`, generated tables, logo; plus the how-to recipes.
+- **GLIM:** the new keys in the sim and robot configs (compute_covs approved for the robot), the
+  viewer point size, and `T_lidar_imu`.
 
-**Pushed on 2026-11-17** (all on `dev`). Always push the submodules first, so the superproject never
-points to unpushed commits.
+**On hold (Michele):**
+- **IMU heading convention:** the "Sim gap" in "GLIM keys and EKF". Some things must be confirmed
+  on the robot first.
+- **EKF tuning, and Nav2 tuning:** the crossing-walker finding (D3) and the EKF findings below.
+  Not simulator work.
+- **CI for the simulator:** Michele asked whether it's needed at all. Proposed: no, beyond the docs
+  build that already runs; run the scenarios by hand. GitHub runners have no GPU. Not confirmed.
+- **Robot `T_lidar_imu`:** Michele tests it on the robot.
 
 **Constraints:**
-- **jo_description:** joints and origins are the **real robot's TFs** (Michele's `88a2aac`).
-  Never change them; sim-only changes go in `<gazebo>` tags.
-- **Scope: simulator only for now.** Record navigation findings (`localization*.yaml`, Nav2) as
-  deferred; don't tune them.
-- **The robot config `glim_config_bunker` is untouched.** New GLIM keys go in the sim config first;
-  Michele evaluates before anything reaches the robot.
-- **jo-zotac Docker fix:** postponed by Michele. Don't touch jo-zotac: another session has
-  uncommitted changes there. The robot's Testudo config will belong to jo-zotac.
-- **The robot runs GLIM on the GPU only.** CPU-mode results matter little.
-- **Shared machine:**
-  - Spirula (`./build_vulkan/spirula`) uses the GPU, and its builds use a lot of RAM and CPU. On
-    2026-11-17 its shader compiles dropped office_cpr to RTF 0.06.
-  - Check `uptime`, `free -h` and `nvidia-smi` before a test batch.
-  - The glim_ros2 session (`~/glim_ros2`) coordinates GPU slots through SendMessage.
+- **jo_description:** joints and origins are the **real robot's TFs**. Never change them;
+  sim-only changes go in `<gazebo>` tags.
+- **Scope: simulator only.** Record navigation findings (`localization*.yaml`, Nav2) as deferred.
+- **Robot GLIM config `glim_config_bunker`:** changes only with Michele's OK.
+- **jo-zotac:** read only. Its Docker fix is postponed.
+- **Shared machine:** check `uptime`, `free -h` and `nvidia-smi` before test batches. Other sessions
+  may use the GPU (Spirula, the glim_ros2 session); coordinate with SendMessage.
+- **Git:** branch `dev` everywhere; push the submodules first; no Co-Authored-By line; docs updated
+  in the same commit as the feature; `mkdocs build --strict` must pass. Never `mkdocs gh-deploy`.
 
-### Next session checklist
-1. **D2 ground truth: done** (2026-11-17). Next: use it in probes instead of `gz model -p`.
-2. **Questions of 2026-11-17, answered:**
-   - **GLIM map auto-save: no** (Michele, 2026-11-17: `save_map` from the shell is enough).
-   - **`TERM` in `compose.yaml`: dropped** (Michele, 2026-11-17). `./jo` passes the host `TERM`.
-   - **DendROS 8-colour bug:** note left in `~/DendROS/NOTE_tui_8_color_terminals.md` (2026-11-17).
-   - **`namespace` / `robot_name`: not planned** (Michele, 2026-11-17: no multi-robot needed).
-3. **Decisions of 2026-11-17** (Michele):
-   - **`check_worlds --robot` over all 51 worlds: not yet.** Wait for Michele's go.
-   - **IMU heading convention** (the "Sim gap" in "GLIM keys and EKF"): **later**. Some things must
-     be confirmed on the robot first.
-   - **Approved, order to be decided with Michele:** Phase E, Phase F, D3, track re-tuning (use the
-     D2 ground truth), RealSense depth encoding (D1), the RTAB-Map build check (RAM-heavy: only when
-     Spirula is not building). Also the documentation site, Phase G below.
-   - **EKF tuning: later** (Michele).
-   - **Robot `T_lidar_imu`** (jo_navigation `8c027f8`): Michele will test it on the robot soon.
-4. **GLIM robot config** (jo_navigation `a49e82f`):
-   - The neutral keys went into `glim_config_bunker`. They are GLIM defaults made explicit:
-     `config_logging`, `validate_imu`, `enable_cropbox_filter`, `ang_scale`, `intensity_field`.
-     `ring_field: ring` makes GLIM read the ring field, which nothing in GLIM uses yet.
-   - **`compute_covs: true` too** (Michele approved, jo_navigation `b9690aa`). GLIM's odometry
-     covariance goes from glim_ros's fixed fallback (1e-2 m², 1e-3 rad²) to GLIM's marginals
-     (~2e-6 m² on the GPU on the testudo bag): about 5000x more weight for GLIM in the EKF's `odom0`.
-     Watch for it in the EKF tuning.
-   - Robot and sim configs now differ only in the sim-specific values (IMU noise,
-     `global_shutter_lidar`, `downsample_resolution`, `image_topic`).
-   - **GLIM viewers**, robot and sim: GLIM's metric point size again (`point_size_metric: true`,
-     `point_size: 0.025` m) for `standard_viewer` and `interactive_viewer` (`offline_viewer`).
-     They were screen-space sizes 0.01 and 10.0, from `31a3c4d`. GUI only. Not yet checked visually:
-     look at it on the next `--glim-view` or `offline_viewer`.
-5. **Pushed 2026-11-17**, all on `dev`: jo_description, then jo_navigation, then jo_sim.
-   - Remove the branch `backup/dev-before-rebase` in jo_description (local only).
-6. **Deferred, for Michele (not simulator work):** the EKF findings below. They **affect the robot**:
-   `imu0` fuses an absolute yaw.
-7. **GLIM drift on the testudo bag** (glim_ros2 session, 2026-11-17, FYI). Parked robot, bag s 30-60,
-   95th-percentile pose spread, robot GPU config:
-   - upstream glim_ros2 10.4 / 12.2 m;
-   - fork 8.5 / 10.0 m;
-   - fork with `downsample_resolution` 1.0: 4.9 / 8.3 m;
-   - the robot's own live GLIM in the bag: 7.9 m. Wheel odometry: 0.1 m.
+### Next session checklist (docs: G2–G5 and the media)
+1. **Agree the media plan with Michele first.** Who records the videos is still open. Options:
+   - Michele records the interactive ones (GUI, RViz, the DendROS TUI);
+   - I record scripted screen captures: ffmpeg x11grab on the GUI while a script drives the sim
+     (scenario runner, `/cmd_vel`, `sim_control`). The GPU is needed, so ask Michele first.
+2. **G4, the media.** 31 placeholders: `grep -rn 'class="media-ph' docs` (8 images, 7 videos, the
+   rest diagrams/screenshots). For each, the caption in the placeholder says what to show.
+   - **Screenshots:** Gazebo GUI, RViz in each mode, the sensor views (cloud, cameras, depth), the
+     GLIM viewer, `offline_viewer`, the DendROS TUI.
+   - **World thumbnails:** a headless camera render per world, for the 23 good and usable worlds
+     (the table in `docs/user-guide/worlds.md`). Write it as a generator in `docs/gen/`, using the
+     same per-world loop as `check_worlds`.
+   - **Videos:** quick start, teleop, local nav goal, GPS goal in a city world, pause/step/RTF,
+     a scenario run, a GLIM map. Short compressed MP4 or WebM, a few MB each, in `docs/assets/`
+     (Pages serves no Git LFS).
+   - **Plot:** ground truth vs GLIM vs EKF, from a scenario bag (`--record all`).
+3. **G2–G3, the remaining text.** 12 `!!! planned` boxes: `grep -rn '!!! planned' docs`.
+   - getting-started/updating: the rebuild table.
+   - user-guide/sensors: the TF tree, generated from the URDF, and per-sensor parameters.
+   - user-guide/performance: RTF per world and mode, from `world_status.json`, and the cost per sensor.
+   - user-guide/troubleshooting: more entries, from the gotchas in this file and in memory.
+   - developer/architecture: the launch graph, and the per-sensor data flow.
+   - developer/nodes: parameters, topics and QoS per node.
+   - developer/launch-files: the walkthrough.
+   - developer/world-preprocessor: before/after for each patch.
+   - reference/topics-frames: a generated table.
+   - developer/docker and developer/testing: the CI notes. Close them according to Michele's CI answer.
+   - developer/sim-vs-robot: the EKF and Nav2 differences (none so far).
+   - Kept up to date by generation (Phase G): add the world catalogue and topics generators to
+     `docs/gen/gen_tables.py`.
+4. **G5, the review:** a fresh agent with only the site sets up the sim and adds a sensor; Michele
+   reads it as a new user. Then the merge `dev` → `main` (Michele) and Settings → Pages → Source:
+   GitHub Actions.
+5. **Housekeeping:**
+   - Remove the local branch `backup/dev-before-rebase` in jo_description (ask first).
+   - The image `jo-sim:rtabmap` (12.8 GB) is kept for RTAB-Map tests: delete it if Michele wants.
+6. **Not checked visually yet:** the GLIM viewer metric point size (0.025 m). Look at it when taking
+   the GLIM screenshots.
 
-   So the cause is GLIM with this config or this environment, not the fork or the downsampling.
+**Docs workflow:**
+- Generated tables: `python3 docs/gen/gen_tables.py`. It needs the container running.
+- Build: a venv with `pip install -r docs/requirements.txt`, then `mkdocs build --strict`
+  (`NO_MKDOCS_2_WARNING=1` hides the end-of-life banner).
+- Preview: `mkdocs serve -a 127.0.0.1:8000`.
+- Look without the GPU: headless Chrome `--disable-gpu`; for the dark scheme, set localStorage
+  `/.__palette` (`/jo_sim/.__palette` under serve).
 
 **How to run:**
 - From the host: `./jo sim [-w world] [-n none|local|gps] [--headless] [--paused] [--rtf X]
-  [--glim-view] [name:=value ...]`, `./jo ctl play|pause|step|status`, `./jo stop`, `./jo build`,
-  `./jo shell`. `./jo help` lists everything.
-- Tests through the wrapper: `./jo --domain 77 --partition jo_sim_test sim --headless --no-rviz`.
-  Then `./jo --domain 77 --partition jo_sim_test stop`. In a pseudo-tty (`script -qfc`), Ctrl-C works too.
-- Inside the container (`docker exec -it jo_sim-jo-sim-1 bash`):
-- Tests always use `GZ_PARTITION=jo_sim_test ROS_DOMAIN_ID=77`, never the user's domain 0 or
-  partition `jo_sim`. `check_worlds --robot` uses its own partition and domain 78.
-- Stop launches by process group (`setsid ros2 launch ... &`, then `kill -INT -$PG`).
+  [--glim-view] [name:=value ...]`, `./jo ctl play|pause|step|status`, `./jo scenario NAME`,
+  `./jo stop`, `./jo build`, `./jo shell`, `./jo check`. `./jo help` lists everything.
+- **Tests:** always in the sandbox, `./jo --domain 77 --partition jo_sim_test ...`, never the
+  user's domain 0 or partition `jo_sim`. `check_worlds --robot` uses its own partition and domain 78.
+  Stop with `./jo --domain 77 --partition jo_sim_test stop`, or kill by process group.
+- **Topic health:** `health` (TUI) or `health_headless` (results on `/testudo/*`). 167/167 OK on the
+  full stack with the robot idle.
+- **Scenarios:** `./jo scenario office_out_and_back`, then `office_crossing`. Both PASS; output goes
+  to `bags/scenarios/`.
 
-**Container state** (`jo_sim-jo-sim-1`, image rebuilt and container recreated 2026-11-17):
-- **glim_ros2:** pinned with `GLIM_ROS_COMMIT` in `.env` (`dev` `da3fae1`). A late layer checks it
-  out and rebuilds only glim_ros. To follow a newer commit, set it in `.env`, run
-  `docker compose build` (about a minute), then `docker compose up -d`. glim_ros2 `dev` has newer
-  commits (`9ea1bff`, `3838f5c`, `af79c6c`), none of them changing `glim_rosnode`.
-- **Left running** after the session (2026-11-17 ~12:10). No sim, no background jobs or test
-  launches of this session.
-- **The glim_ros2 session's** container `glim_gpu_test` was running then (short GPU GLIM runs on
-  domain 88 about the robot config's parked drift, suspected `downsample_resolution 0.2`). Not ours:
-  leave it alone; its results go to Michele / that session.
-- **Test leftovers** in the container, lost when it is recreated: `/tmp/glimrep` (logs).
+**State at the end of 2026-11-17:**
+- **Container `jo_sim-jo-sim-1`:** recreated on the new image (Michele's OK). No sim or test jobs
+  of this session are running.
+- **glim_ros2:** pinned with `GLIM_ROS_COMMIT` in `.env` (`dev` `da3fae1`). To follow a newer commit,
+  set it, run `docker compose build` (about a minute), then `docker compose up -d`.
+- **Images:** `jo-sim:latest` (the container's), and `jo-sim:rtabmap` (BUILD_RTABMAP=true).
+- **The previous session's `mkdocs serve`** on 127.0.0.1:8000 dies with that session; start it again
+  if needed.
 
 ### GLIM keys and EKF (2026-11-17)
 - **Sim config `glim_config_bunker_sim`** (jo_navigation `5775a10`). Michele: "first in the sim,
@@ -347,16 +350,16 @@ Findings:
   Global settings: `docker/utils/dendROS/defaults.yaml` (copy of Michele's host `~/.config/dendROS/defaults.yaml`),
   symlinked into `~/.config/dendROS/` by `utilities.sh`. `node_colors.yaml` is runtime state written by each
   launch (not a setting); the group colors are in the package `dendROS.yaml`, matching jo-zotac's.
-- **Testudo** (topic health): submodule `testudo` following `main`, mounted and built by the
-  entrypoint (`textual` via `pip --user` in the image). Config **owned by jo_sim**:
-  `jo_sim/config/testudo.yaml` (Michele: the robot's belongs to jo-zotac). Aliases `health`,
-  `health_check`. **Status (2026-11-17): integrated but not reliable yet, parked** (Michele: "not
-  that important"). Testudo-side problems are written up in `~/testudo/JO_SIM_NOTES.md` for the
-  Testudo agent: invalid package.xml (`--` in comments, so the aliases call
-  `~/install/testudo/lib/testudo/testudo` instead of `ros2 run`), no use_sim_time, content checks
-  failing with the full stack (~128 topics), TF watch missing map->odom. jo_sim-side leftover:
-  declare the Nav2 action feedback / selector topics as `event_driven` (most of the ERRORs while
-  idle).
+- **Testudo** (topic health): submodule `testudo` following **`dev`** (at `32f7473`), mounted and
+  built by the entrypoint (`textual` via `pip --user` in the image). The config is **owned by
+  jo_sim**: `jo_sim/config/testudo.yaml` (Michele: the robot's belongs to jo-zotac).
+  - Aliases: `health` (watch, TUI) and `health_headless` (watch --headless, results on
+    `/testudo/*`), both on sim time. `testudo check` was removed by the maintainer.
+  - **Status (2026-11-17): working.** 167/167 OK on the full stack with the robot idle.
+  - The Testudo agent fixed every issue in `~/testudo/JO_SIM_NOTES.md`; details are in Phase D
+    ("Testudo on the full stack").
+  - Stack-specific entries stay in jo_sim's config (the maintainer's rule): `event_driven` for
+    /motion_target, /slowdown, /glim_ros/grid, and the GLIM odom covariance thresholds.
 
 ## Phase B — Drop-in worlds
 
@@ -707,8 +710,8 @@ Scripts in `docs/gen/` rebuild these tables, and CI fails if they are out of dat
 ### Open points for Michele
 - the deploy branch: **`main`** (Michele, 2026-11-17);
 - scope: jo_sim only, with jo_description and jo_navigation covered where the sim touches them
-  (proposed), or separate sites;
-- who records the videos.
+  (what G1 did; not objected to);
+- who records the videos: **still open**, first item of the next session.
 
 ### G1 status (2026-11-17)
 - **Site:**
@@ -732,4 +735,4 @@ Scripts in `docs/gen/` rebuild these tables, and CI fails if they are out of dat
 - **Logo, favicon and home render** (Michele's choice): Jo rendered from the URDF, with a
   transparent background, by `docs/gen/render_logo/render.sh`. CPU only: Blender Cycles on the CPU,
   with CUDA hidden. Run it again if the URDF's look changes.
-- **Open:** who records the videos.
+- **Open:** who records the videos (see the next session checklist).
