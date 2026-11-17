@@ -72,7 +72,7 @@ full_navigation                       # front/back cameras + localization + loca
 full_gps_navigation                   # + GNSS, GPS localization and navigation
 ros2 launch jo_sim sim_bringup.launch.py localization:=true world:=office_cpr x:=2.0 yaw:=1.57
 ```
-Simulator-only arguments: `world`, `gui`, `follow` (Gazebo GUI camera follows the robot, default on), `x y z yaw`, `latitude longitude elevation` (GNSS datum for worlds without `<spherical_coordinates>`), `sim_noise` (sensor noise on/off, default on), `lidar_range_stddev`, `glim_config`.
+Simulator-only arguments: `world`, `gui`, `follow` (Gazebo GUI camera follows the robot, default on), `x y z yaw`, `latitude longitude elevation` (GNSS datum for worlds without `<spherical_coordinates>`), `sim_noise` (sensor noise on/off, default on), `lidar_range_stddev`, `glim_config`, `glim_anchor_frame` (default `base`).
 
 #### Simulator only
 ```bash

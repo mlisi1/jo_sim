@@ -45,6 +45,7 @@ def generate_launch_description():
         # Simulator specific
         flag('glim_config', os.path.join(nav_share, 'config', 'glim', 'glim_config_bunker_sim'),
              'GLIM config used in simulation'),
+        flag('glim_anchor_frame', 'base', 'Origin of the GLIM map/odom frames (imu or base)'),
     ]
 
     sim = IncludeLaunchDescription(
@@ -56,6 +57,7 @@ def generate_launch_description():
     stack_args = {
         'use_sim_time': 'true',
         'glim_config': LaunchConfiguration('glim_config'),
+        'glim_anchor_frame': LaunchConfiguration('glim_anchor_frame'),
     }
 
     def stack(launch_file, flag_name, extra=None):
