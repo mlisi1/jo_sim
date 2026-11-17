@@ -59,6 +59,15 @@ Push the submodules first, so the superproject never points to unpushed commits.
      `analyze_ekf.py`, `jumps_ekf.py`, `run_ekf.sh` in the container's `/tmp/scratch`, data in
      `/tmp/glimrep/ekf` (lost when the container is recreated).
    - Later, with Michele: whether to apply the keys to the robot config `glim_config_bunker`.
+   - **EKF on real data (glim_ros2 session, 2026-11-17, testudo bag, robot GPU config + the keys):**
+     GLIM GPU 8/8 clean cold starts, variances ~2e-6 m², fork TF invariants hold. But
+     `/odometry/filtered` is a median 1-2 m and up to 5-18 m off GLIM, already while standing still.
+     Cause in `localization*.yaml` (both files): `imu0_config` fuses the IMU **absolute yaw** (the
+     comment says it doesn't); the Xsens yaw is absolute (0 = north) while GLIM's starts at 0, so two
+     conflicting yaws. The vx/vy row is ignored (Imu has no velocity), no accelerations are fused.
+     **Affects the robot.** Deferred with the rest of the navigation tuning.
+     **Sim gap:** the sim hides it at spawn yaw 0 (sim IMU yaw = GLIM yaw). Test with a non-zero
+     `yaw:=` and check that the sim IMU orientation follows the Xsens convention (absolute heading).
 2. **GPU check on the real data (glim_ros2 session, waiting for Michele's go-ahead):** the robot's
    `glim_config_bunker` with GPU GLIM on the testudo bag, in a throwaway container from the jo-sim image.
    It needs several GiB of RAM and the GPU: run it only when Spirula is not building.
