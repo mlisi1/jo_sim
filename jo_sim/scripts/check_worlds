@@ -63,7 +63,9 @@ def rtf(env):
 
 
 def check(name, path, seconds):
-    patched, _ = wt.prepare_world(path, 43.7167, 10.3966, out_dir='/tmp/jo_sim/check_worlds')
+    st = wt.world_settings(path)
+    patched, _ = wt.prepare_world(path, st['latitude'], st['longitude'], st['elevation'],
+                                  out_dir='/tmp/jo_sim/check_worlds')
     env = dict(os.environ, GZ_PARTITION=f'jo_sim_check_{os.getpid()}')
     env['GZ_SIM_RESOURCE_PATH'] = ':'.join(
         wt.resource_dirs(path) + [p for p in env.get('GZ_SIM_RESOURCE_PATH', '').split(':') if p])

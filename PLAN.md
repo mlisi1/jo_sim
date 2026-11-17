@@ -78,7 +78,8 @@ Push the submodules first, so the superproject never points to unpushed commits.
    - RTAB-Map build check (`BUILD_RTABMAP=true`)
    - Testudo
    - D2 ground truth
-   - Phase B leftover: per-world sidecar yaml (the `check_worlds --robot` sensor check is done)
+   - Phase B: done (2026-11-17: `check_worlds --robot`, sidecar yaml with spawn/datum/description;
+     missions and obstacles in the sidecar come with E and D3)
    - Phases C, E, F
    - D3 obstacles and track re-tuning
 
@@ -304,6 +305,11 @@ Findings:
 - Preprocessor (started in A) writes a patched temp copy of the world: missing systems,
   spherical coordinates, obstacles (see D3).
 - Optional sidecar `<world>.yaml`: spawn pose(s), GNSS datum (lat/lon), description, missions, obstacles.
+  **Done (2026-11-17)** for spawn (`spawn:` + named `spawns:`, `spawn:=<name>`), `gnss:` datum and
+  `description` (`world_tools.world_settings`: command line > sidecar > defaults; looked up in the
+  search dirs first, so `user_worlds/` overrides and external-collection sidecars go in
+  `jo_sim/worlds/`, then next to the world). sim_bringup's navsat yaw offset follows the resolved
+  yaw. Verified end to end (spawn pose, GNSS fix, navsat yaw_offset). Missions/obstacles: later (E, D3).
 - `check_worlds` script: loads every world headless for N s, checks sensor topics, maintains a
   curated "known good" list (many external worlds are Gazebo Classic and do not load in Harmonic).
   **Done (2026-11-16):** `check_worlds` (load errors, server alive, RTF; results in

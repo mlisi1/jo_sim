@@ -20,7 +20,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-from jo_sim.world_tools import prepare_world, resolve_world, resource_dirs
+from jo_sim.world_tools import prepare_world, resolve_world, resource_dirs, world_settings
 
 PKG = 'jo_sim'
 
@@ -48,20 +48,27 @@ def bridge(name, config, condition=None):
     )
 
 
-def world_and_gazebo(context):
+def settings_from(context):
+    """World path and its settings (command line > sidecar <world>.yaml > defaults)."""
     world = resolve_world(LaunchConfiguration('world').perform(context))
-    patched, changes = prepare_world(
-        world,
-        latitude=float(LaunchConfiguration('latitude').perform(context)),
-        longitude=float(LaunchConfiguration('longitude').perform(context)),
-        elevation=float(LaunchConfiguration('elevation').perform(context)),
-    )
+    overrides = {k: LaunchConfiguration(k).perform(context)
+                 for k in ('x', 'y', 'z', 'yaw', 'latitude', 'longitude', 'elevation')}
+    return world, world_settings(world, overrides, LaunchConfiguration('spawn').perform(context))
+
+
+def world_and_gazebo(context):
+    world, st = settings_from(context)
+    patched, changes = prepare_world(world, st['latitude'], st['longitude'], st['elevation'])
     gui = LaunchConfiguration('gui').perform(context).lower() in ('true', '1')
     gz_args = f"-r -v{LaunchConfiguration('gz_verbosity').perform(context)} "
     if not gui:
         gz_args += '-s --headless-rendering '
 
     actions = [LogInfo(msg=f'[jo_sim] world: {world}')]
+    if st['sidecar']:
+        actions.append(LogInfo(msg=f"[jo_sim] sidecar: {st['sidecar']}" +
+                                   (f" ({st['description']})" if st['description'] else '')))
+    actions.append(LogInfo(msg=f"[jo_sim] spawn x {st['x']} y {st['y']} z {st['z']} yaw {st['yaw']}"))
     actions += [LogInfo(msg=f'[jo_sim]   {c}') for c in changes]
     actions += [AppendEnvironmentVariable('GZ_SIM_RESOURCE_PATH', d) for d in resource_dirs(world)]
     actions.append(IncludeLaunchDescription(
@@ -85,6 +92,11 @@ def world_and_gazebo(context):
         arguments=[f'/world/{name}/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
         remappings=[(f'/world/{name}/clock', '/clock')],
     ))
+    actions.append(Node(
+        package='ros_gz_sim', executable='create', output='screen',
+        arguments=['-topic', 'robot_description', '-name', 'jo',
+                   '-x', str(st['x']), '-y', str(st['y']), '-z', str(st['z']), '-Y', str(st['yaw'])],
+    ))
     return actions
 
 
@@ -101,14 +113,17 @@ def generate_launch_description():
         DeclareLaunchArgument('gz_verbosity', default_value='3'),
         DeclareLaunchArgument('sens_rviz', default_value='false',
                               description='RViz with the simulated sensors (as sens_rviz in jo_bringup)'),
-        DeclareLaunchArgument('x', default_value='0.0'),
-        DeclareLaunchArgument('y', default_value='0.0'),
-        DeclareLaunchArgument('z', default_value='0.6'),
-        DeclareLaunchArgument('yaw', default_value='0.0'),
-        # GNSS datum used when the world has no <spherical_coordinates> (default: Pisa, UTM 32N)
-        DeclareLaunchArgument('latitude', default_value='43.7167'),
-        DeclareLaunchArgument('longitude', default_value='10.3966'),
-        DeclareLaunchArgument('elevation', default_value='0.0'),
+        # Spawn pose and GNSS datum: empty = from the world's sidecar <world>.yaml, else the defaults
+        # (0, 0, 0.6, yaw 0; datum Pisa, UTM 32N, used when the world has no <spherical_coordinates>)
+        DeclareLaunchArgument('x', default_value=''),
+        DeclareLaunchArgument('y', default_value=''),
+        DeclareLaunchArgument('z', default_value=''),
+        DeclareLaunchArgument('yaw', default_value=''),
+        DeclareLaunchArgument('spawn', default_value='',
+                              description="Named spawn pose from the world's sidecar (spawns:)"),
+        DeclareLaunchArgument('latitude', default_value=''),
+        DeclareLaunchArgument('longitude', default_value=''),
+        DeclareLaunchArgument('elevation', default_value=''),
     ]
     args += [DeclareLaunchArgument(s, default_value='true', description=f'Publish the {s} topics')
              for s in SENSOR_BRIDGES]
@@ -124,13 +139,6 @@ def generate_launch_description():
             os.path.join(get_package_share_directory('jo_description'), 'launch', 'description.launch.py')),
         launch_arguments={'use_sim_time': 'true', 'use_ros2_control': 'false',
                           'sim_noise': LaunchConfiguration('sim_noise')}.items(),
-    )
-
-    spawn = Node(
-        package='ros_gz_sim', executable='create', output='screen',
-        arguments=['-topic', 'robot_description', '-name', 'jo',
-                   '-x', LaunchConfiguration('x'), '-y', LaunchConfiguration('y'),
-                   '-z', LaunchConfiguration('z'), '-Y', LaunchConfiguration('yaw')],
     )
 
     bridges = [bridge('sim_bridge', os.path.join(bridge_dir, 'core.yaml'))]
@@ -165,7 +173,6 @@ def generate_launch_description():
         *args,
         description,
         OpaqueFunction(function=world_and_gazebo),
-        spawn,
         *bridges,
         drivers,
         rviz,

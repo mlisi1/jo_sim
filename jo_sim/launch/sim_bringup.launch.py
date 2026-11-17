@@ -5,18 +5,20 @@ aliases work unchanged (see docker/utils/utilities.sh):
 
     ros2 launch jo_sim sim_bringup.launch.py front_cam:=true localization:=true navigation:=true rviz:=true
 
-Simulator-only arguments (world, gui, x, y, z, yaw, latitude, longitude, sim_noise, ...) are forwarded to
-launch_sim.launch.py. `bunker` is accepted for compatibility: the simulated base always runs.
+Simulator-only arguments (world, gui, x, y, z, yaw, spawn, latitude, longitude, sim_noise, ...) are forwarded to
+launch_sim.launch.py; spawn pose and datum default to the world's sidecar <world>.yaml. `bunker` is accepted for compatibility: the simulated base always runs.
 """
 import os
 
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+
+from jo_sim.world_tools import resolve_world, world_settings
 
 
 def flag(name, default, description):
@@ -67,14 +69,20 @@ def generate_launch_description():
             condition=IfCondition(LaunchConfiguration(flag_name)),
         )
 
+    def gps_localization(context):
+        # spawn yaw as resolved by launch_sim: command line > world sidecar > 0
+        world = resolve_world(LaunchConfiguration('world', default='office_cpr').perform(context))
+        yaw = world_settings(world, {'yaw': LaunchConfiguration('yaw', default='').perform(context)},
+                             LaunchConfiguration('spawn', default='').perform(context))['yaw']
+        return [stack('localization_gps.launch.py', 'localization_gps', {'navsat_yaw_offset': str(yaw)})]
+
     return LaunchDescription([
         *args,
         sim,
         stack('localization.launch.py', 'localization'),
         # Gazebo's world is ENU and GLIM's odometry starts at the spawn heading, so the
         # navsat_transform heading offset is the spawn yaw (the robot's 1.57 is for the Xsens)
-        stack('localization_gps.launch.py', 'localization_gps',
-              {'navsat_yaw_offset': LaunchConfiguration('yaw', default='0.0')}),
+        OpaqueFunction(function=gps_localization),
         stack('navigation_local.launch.py', 'navigation'),
         stack('navigation_gps.launch.py', 'navigation_gps'),
     ])

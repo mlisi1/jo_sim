@@ -107,6 +107,58 @@ def resolve_world(world):
         f"World '{world}' not found in {search_dirs()}. Available: {', '.join(sorted(worlds))}")
 
 
+# Spawn pose and GNSS datum used when neither the command line nor the world's sidecar sets them
+# (datum: Pisa, UTM 32N; used only for worlds without <spherical_coordinates>)
+DEFAULT_SETTINGS = {'x': 0.0, 'y': 0.0, 'z': 0.6, 'yaw': 0.0,
+                    'latitude': 43.7167, 'longitude': 10.3966, 'elevation': 0.0}
+SPAWN_KEYS = ('x', 'y', 'z', 'yaw')
+GNSS_KEYS = ('latitude', 'longitude', 'elevation')
+
+
+def sidecar_path(world_path):
+    """The world's sidecar <name>.yaml: the first search directory that has one (so ./user_worlds
+    can override a built-in one, and sidecars for the external collection live in
+    jo_sim/worlds), else the file next to the world. None if there is none."""
+    name = os.path.splitext(os.path.basename(world_path))[0]
+    candidates = [os.path.join(d, name + '.yaml') for d in search_dirs()]
+    candidates.append(os.path.splitext(world_path)[0] + '.yaml')
+    return next((c for c in candidates if os.path.isfile(c)), None)
+
+
+def world_settings(world_path, overrides=None, spawn=''):
+    """Spawn pose, GNSS datum and description for a world. Priority: `overrides` (command-line
+    values; empty strings and None are ignored) > the sidecar > DEFAULT_SETTINGS.
+
+    Sidecar <world>.yaml (all keys optional):
+        description: Office with corridors, good for indoor GLIM tests
+        spawn: {x: 1.0, y: -2.0, z: 0.6, yaw: 1.57}
+        spawns:                      # named alternatives, picked with spawn:=<name>
+          dock: {x: 5.0, y: 0.0, yaw: 3.14}
+        gnss: {latitude: 43.72, longitude: 10.33, elevation: 48.0}
+    """
+    import yaml
+    path = sidecar_path(world_path)
+    side = {}
+    if path:
+        with open(path) as f:
+            side = yaml.safe_load(f) or {}
+    settings = dict(DEFAULT_SETTINGS)
+    pose = dict(side.get('spawn') or {})
+    if spawn:
+        named = side.get('spawns') or {}
+        if spawn not in named:
+            raise ValueError(f"spawn '{spawn}' not in {path or 'the world (no sidecar)'}: "
+                             f"available {', '.join(sorted(named)) or 'none'}")
+        pose.update(named[spawn])
+    settings.update({k: float(v) for k, v in pose.items() if k in SPAWN_KEYS})
+    settings.update({k: float(v) for k, v in (side.get('gnss') or {}).items() if k in GNSS_KEYS})
+    settings.update({k: float(v) for k, v in (overrides or {}).items()
+                     if k in DEFAULT_SETTINGS and v not in (None, '')})
+    settings['description'] = side.get('description', '')
+    settings['sidecar'] = path
+    return settings
+
+
 def resource_dirs(world_path):
     """Directories to add to GZ_SIM_RESOURCE_PATH for this world (models next to it, etc.)."""
     os.makedirs(CONVERTED_MODELS, exist_ok=True)

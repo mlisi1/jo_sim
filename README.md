@@ -72,7 +72,7 @@ full_navigation                       # front/back cameras + localization + loca
 full_gps_navigation                   # + GNSS, GPS localization and navigation
 ros2 launch jo_sim sim_bringup.launch.py localization:=true world:=office_cpr x:=2.0 yaw:=1.57
 ```
-Simulator-only arguments: `world`, `gui`, `follow` (Gazebo GUI camera follows the robot, default on), `x y z yaw`, `latitude longitude elevation` (GNSS datum for worlds without `<spherical_coordinates>`), `sim_noise` (sensor noise on/off, default on), `lidar_range_stddev`, `glim_config`, `glim_anchor_frame` (default `base`).
+Simulator-only arguments: `world`, `gui`, `follow` (Gazebo GUI camera follows the robot, default on), `x y z yaw` and `spawn` (named pose from the world's sidecar), `latitude longitude elevation` (GNSS datum for worlds without `<spherical_coordinates>`; all default to the sidecar), `sim_noise` (sensor noise on/off, default on), `lidar_range_stddev`, `glim_config`, `glim_anchor_frame` (default `base`).
 
 #### Simulator only
 ```bash
@@ -95,6 +95,16 @@ check_worlds --robot office_cpr  # spawn the robot too: sensor rates (sim time),
 sim_worlds                   # list with the result: ok / slow / fails, and the robot check
 ```
 Results are kept in `user_worlds/.cache/world_status.json`.
+
+A world can have a sidecar `<world>.yaml` with its spawn pose(s), GNSS datum and a description. It is looked up in `user_worlds/` first (so you can add one for any world, including the external collection), then `jo_sim/worlds/`, then next to the world file. Command-line arguments (`x y z yaw latitude longitude elevation`) override it:
+```yaml
+description: Office with corridors
+spawn: {x: 1.0, y: -2.0, z: 0.6, yaw: 1.57}
+spawns:                       # named alternatives: sim world:=my_world spawn:=dock
+  dock: {x: 5.0, y: 0.0, yaw: 3.14}
+gnss: {latitude: 43.72, longitude: 10.33, elevation: 48.0}   # used if the world has no <spherical_coordinates>
+```
+In GPS mode the navsat heading offset follows the resolved spawn yaw.
 
 #### Simulated sensors
 | Real sensor | Topics | Frame |
