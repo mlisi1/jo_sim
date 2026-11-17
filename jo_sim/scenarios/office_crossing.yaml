@@ -1,0 +1,19 @@
+# office_out_and_back with a person walking across the corridor at y = 3 (D3, moving obstacles).
+# The open area there is free from x = -3.8 to 3.15 (checked on the office mesh).
+description: office_cpr out and back, a person crossing the path at y = 3 (local navigation)
+world: office_cpr
+spawn: {x: 0.0, y: 0.0, yaw: 1.5708}
+nav: local
+record: none
+settle: 3.0
+obstacles:
+  - {name: walker, shape: person, waypoints: [[-2.5, 3.0], [2.5, 3.0]], speed: 0.6, mode: pingpong, pause: 1.0,
+     yield_distance: 1.2}             # stops while the robot is within 1.2 m ahead of it
+mission:
+  - {x: 0.0, y: 4.5, yaw: 1.5708, tolerance: 0.5, timeout: 120}
+  - {x: 0.0, y: 1.0, yaw: -1.5708, tolerance: 0.5, timeout: 120}
+criteria:
+  goals_reached: true
+  max_localization_error: 0.20
+  min_obstacle_distance: 0.5      # [m] base_link to the walker's surface (Nav2 robot_radius 0.52)
+  max_duration: 300

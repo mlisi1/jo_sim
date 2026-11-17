@@ -6,6 +6,10 @@ find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(image_transport REQUIRED)
+find_package(gz_sim_vendor REQUIRED)
+find_package(gz-sim REQUIRED)
+find_package(gz_plugin_vendor REQUIRED)
+find_package(gz-plugin REQUIRED COMPONENTS register)
 
 add_executable(frame_restamp src/frame_restamp.cpp)
 target_compile_features(frame_restamp PUBLIC cxx_std_17)
@@ -20,6 +24,13 @@ target_compile_features(depth_to_mm PUBLIC cxx_std_17)
 target_link_libraries(depth_to_mm PUBLIC rclcpp::rclcpp image_transport::image_transport ${sensor_msgs_TARGETS})
 
 install(TARGETS frame_restamp velodyne_emulation depth_to_mm DESTINATION lib/${PROJECT_NAME})
+
+# Gazebo system: moves a model along waypoints (dynamic obstacles). launch_sim adds lib/ to
+# GZ_SIM_SYSTEM_PLUGIN_PATH.
+add_library(jo_sim_waypoint_mover SHARED src/waypoint_mover.cc)
+target_compile_features(jo_sim_waypoint_mover PUBLIC cxx_std_17)
+target_link_libraries(jo_sim_waypoint_mover PUBLIC gz-sim::gz-sim gz-plugin::register)
+install(TARGETS jo_sim_waypoint_mover LIBRARY DESTINATION lib)
 
 # jo_sim.world_tools (used by the launch files and list_worlds)
 ament_python_install_package(${PROJECT_NAME})

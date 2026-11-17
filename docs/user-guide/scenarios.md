@@ -53,6 +53,7 @@ nav: local                               # none | local | gps
 record: none                             # none | all | compressed
 settle: 3.0                              # [s, sim] wait after the stack is ready
 launch_args: {}                          # any extra name: value for sim_bringup
+obstacles: []                            # moving obstacles, see below
 mission:                                 # goals in WORLD coordinates
   - {x: 0.0, y: 4.5, yaw: 1.5708, tolerance: 0.5, timeout: 90}
   - {x: 0.0, y: 1.0, yaw: -1.5708, tolerance: 0.5, timeout: 120}
@@ -61,6 +62,7 @@ criteria:
   max_localization_error: 0.15           # [m] TF map->base_link vs ground truth, whole run
   final_localization_error: 0.10         # [m] at the end
   max_duration: 240                      # [s, sim] the whole mission
+  min_obstacle_distance: 0.5             # [m] only with obstacles
 ```
 
 - **Goals are in world coordinates**, like the spawn pose. GLIM's `map` frame starts at the spawn
@@ -71,6 +73,24 @@ criteria:
   `front_cam: true` (and so on) in `launch_args` to include them.
 - **Recording profiles** are the robot's (jo-zotac `record_all` / `record_compressed`), plus the
   sim-only raw sensor topics excluded. The ground truth is kept.
+
+## Moving obstacles
+
+A scenario can add [moving obstacles](worlds.md#moving-obstacles), in the same format, with
+`obstacles:`. The runner reads their true poses from Gazebo, and records how close `base_link` came
+to each obstacle's surface. The check runs at 100 Hz.
+
+```yaml
+obstacles:
+  - {name: walker, shape: person, waypoints: [[-2.5, 3.0], [2.5, 3.0]], speed: 0.6, pause: 1.0,
+     yield_distance: 1.2}
+criteria:
+  min_obstacle_distance: 0.5     # [m] base_link to the obstacle surface (Nav2 robot_radius is 0.52)
+```
+
+`report.json` has the minimum per obstacle under `obstacles.min_distance`. A value of about 0.45 m
+or less means contact, because the chassis is 0.91 m long. `office_crossing` is the example: a
+person crossing the corridor at y = 3.
 
 !!! warning "GPS scenarios"
     `nav: gps` sends goals in the `map` frame like `local`. It has not been validated yet.

@@ -80,6 +80,48 @@ The original world file is never touched: a patched copy is written to `/tmp/jo_
 
 Details for developers: [World preprocessor](../developer/world-preprocessor.md).
 
+## Moving obstacles
+
+`obstacles:=<file.yaml>` adds moving obstacles to any world. Scenarios can declare them too (see
+[Scenarios](scenarios.md#moving-obstacles)).
+
+```bash
+./jo sim -n local obstacles:=/home/ros/user_worlds/people.yaml
+```
+
+```yaml
+obstacles:
+  - name: walker                 # optional (obstacle_<n>)
+    shape: person                # person (cylinder 0.25 x 1.7 m) | cylinder | box
+    waypoints: [[-2.5, 3.0], [2.5, 3.0]]   # world x y, at least 2
+    speed: 0.6                   # [m/s]
+    mode: pingpong               # pingpong | loop | once
+    pause: 1.0                   # [s] at each waypoint
+    delay: 0.0                   # [s, sim] before starting
+    yield_distance: 1.2          # optional: stop while the robot is this close ahead
+    color: [0.9, 0.4, 0.1]
+  - {shape: box, size: [0.6, 0.4, 1.0], waypoints: [[5, -3], [5, 3]], speed: 0.4, delay: 10}
+```
+
+- **Every sensor sees them:** the lidar, the cameras and physics. They are ordinary models.
+- **They are kinematic:** a contact does not move them. Without `yield_distance`, they walk into the
+  robot and push it.
+- **Motion runs on sim time,** so runs are repeatable, except when an obstacle yields.
+- **Gazebo `<actor>`s are not used** because the lidar does not see them: the RGL plugin skips
+  skinned meshes.
+
+You can also attach the system to a model in your own world file:
+
+```xml
+<plugin filename="jo_sim_waypoint_mover" name="jo_sim::WaypointMover">
+  <speed>0.6</speed><mode>pingpong</mode><pause>1.0</pause>
+  <waypoint>-2.5 3.0</waypoint><waypoint>2.5 3.0</waypoint>
+  <yield_to>jo</yield_to><yield_distance>1.2</yield_distance>
+</plugin>
+```
+
+Give the model's links `<gravity>false</gravity>`, and don't make it static.
+
 ## Checking worlds: `check_worlds`
 
 Loading is not enough. Some Classic worlds run far below real time in Harmonic: for example

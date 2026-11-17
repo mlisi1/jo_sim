@@ -87,6 +87,9 @@ Write `jo_sim/scenarios/<name>.yaml` (format: [Scenarios](../user-guide/scenario
 the path is free (the robot is about 1.1 × 0.75 m), then run it until it passes reliably before
 tightening the criteria.
 
+To test against moving people, add `obstacles:` and `min_obstacle_distance`, as in
+`office_crossing`.
+
 ## Re-render the logo
 
 `docs/gen/render_logo/render.sh [azimuth] [elevation]` renders Jo from the URDF on the CPU. It

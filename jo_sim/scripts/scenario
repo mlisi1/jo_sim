@@ -31,7 +31,7 @@ import time
 import yaml
 
 from ament_index_python.packages import get_package_share_directory
-from jo_sim.world_tools import resolve_world, world_settings
+from jo_sim.world_tools import check_obstacles, resolve_world, world_settings
 
 SHARE = pathlib.Path(get_package_share_directory('jo_sim'))
 SCENARIO_DIRS = [pathlib.Path(os.environ.get('JO_SIM_SCENARIOS', '/home/ros/user_worlds/scenarios')),
@@ -139,6 +139,11 @@ def main():
     stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     out = pathlib.Path(a.out) / f'{stamp}_{name}'
     out.mkdir(parents=True, exist_ok=True)
+    if sc.get('obstacles'):
+        # Moving obstacles (world coordinates): written next to the report, loaded by launch_sim
+        check_obstacles(sc['obstacles'], str(path))
+        (out / 'obstacles.yaml').write_text(yaml.safe_dump({'obstacles': sc['obstacles']}))
+        largs['obstacles'] = str(out / 'obstacles.yaml')
     log(f'{name}: world {world}, spawn x {sp.x} y {sp.y} yaw {sp.yaw}, nav {nav}, record {record}')
     log(f'output: {out}')
 
@@ -181,6 +186,20 @@ def stop(proc, what, grace=20.0):
         pass
 
 
+def obstacle_radius(o):
+    """Horizontal radius of an obstacle (a box: half its diagonal, so the distance is conservative)."""
+    if o.get('shape', 'person') == 'box':
+        sx, sy = o.get('size', [0.5, 0.5, 1.0])[:2]
+        return math.hypot(sx, sy) / 2
+    return float(o.get('radius', 0.25 if o.get('shape', 'person') == 'person' else 0.3))
+
+
+def world_name(sc):
+    import xml.etree.ElementTree as ET
+    world = ET.parse(resolve_world(sc.get('world', 'office_cpr'))).getroot().find('world')
+    return world.get('name', 'default')
+
+
 def run(sc, sp, a, out, launch, record, report):
     import rclpy
     from rclpy.action import ActionClient
@@ -197,7 +216,30 @@ def run(sc, sp, a, out, launch, record, report):
     tf_buf = tf2_ros.Buffer()
     tf2_ros.TransformListener(tf_buf, node)
     gt = {'msg': None}
-    node.create_subscription(Odometry, '/sim/ground_truth/odom', lambda m: gt.__setitem__('msg', m), 10)
+    # Moving obstacles: their true poses from Gazebo (dynamic_pose/info), and the closest approach
+    # of base_link to each obstacle's surface, checked at every ground-truth message (100 Hz)
+    obstacles = {o.get('name', f'obstacle_{i + 1}'): obstacle_radius(o)
+                 for i, o in enumerate(sc.get('obstacles') or [])}
+    obs_pose, clearance = {}, {n: math.inf for n in obstacles}
+    if obstacles:
+        from gz.transport13 import Node as GzNode
+        from gz.msgs10.pose_v_pb2 import Pose_V
+
+        def on_poses(msg):
+            for p in msg.pose:
+                if p.name in obstacles:
+                    obs_pose[p.name] = (p.position.x, p.position.y)
+        gz_node = GzNode()
+        topic = f'/world/{world_name(sc)}/dynamic_pose/info'
+        if not gz_node.subscribe(Pose_V, topic, on_poses):
+            raise RuntimeError(f'cannot subscribe to {topic}')
+
+    def on_gt(m):
+        gt['msg'] = m
+        p = m.pose.pose.position
+        for n, (ox, oy) in list(obs_pose.items()):
+            clearance[n] = min(clearance[n], math.hypot(p.x - ox, p.y - oy) - obstacles[n])
+    node.create_subscription(Odometry, '/sim/ground_truth/odom', on_gt, 10)
     nav_client = ActionClient(node, NavigateToPose, 'navigate_to_pose')
     bt_state = node.create_client(GetState, '/bt_navigator/get_state')
     nav = sc.get('nav', 'local')
@@ -346,6 +388,15 @@ def run(sc, sp, a, out, launch, record, report):
     if 'final_localization_error' in crit and loc['samples']:
         check('final_localization_error', round(loc['last'], 3), crit['final_localization_error'],
               loc['last'] <= crit['final_localization_error'])
+    if obstacles:
+        seen = {n: round(c, 3) for n, c in clearance.items() if c != math.inf}
+        report['obstacles'] = {'min_distance': seen,
+                               'never_seen': sorted(n for n, c in clearance.items() if c == math.inf)}
+        if 'min_obstacle_distance' in crit:
+            worst = min(clearance.values())
+            value = round(worst, 3) if worst != math.inf else None
+            check('min_obstacle_distance', value, crit['min_obstacle_distance'],
+                  value is not None and worst >= crit['min_obstacle_distance'])
     if 'max_duration' in crit:
         check('max_duration', round(duration, 1), crit['max_duration'], duration <= crit['max_duration'])
 

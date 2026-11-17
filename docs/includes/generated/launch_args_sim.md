@@ -16,5 +16,6 @@
 | `latitude` | *(empty)* | [deg] GNSS datum for worlds without &lt;spherical_coordinates&gt;; empty = sidecar, else Pisa |
 | `longitude` | *(empty)* | [deg] GNSS datum, see latitude |
 | `elevation` | *(empty)* | [m] GNSS datum, see latitude |
+| `obstacles` | *(empty)* | YAML file of moving obstacles added to the world (see Worlds) |
 | `sim_noise` | `true` | Simulated sensor noise (IMU, GNSS, cameras, lidar) |
 | `lidar_range_stddev` | `0.015` | [m] lidar range noise when sim_noise is true (VLP-16: +-3 cm) |

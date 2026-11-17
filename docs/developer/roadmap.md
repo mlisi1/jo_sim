@@ -10,7 +10,7 @@ The working roadmap, with session notes, is
 | C: launch ergonomics (`paused`, `rtf`, `sim_control`, `./jo`) | :material-check-circle: done |
 | D1: sensor fidelity (noise, Velodyne fields, RealSense depth encoding) | :material-check-circle: done |
 | D2: ground truth | :material-check-circle: done |
-| D3: dynamic obstacles | :material-circle-outline: planned |
+| D3: dynamic obstacles | :material-check: done (moving models; actors aren't seen by RGL) |
 | Track model re-tuning (steering calibrated against the ground truth) | :material-check-circle: done |
 | E: testing workflow (scenarios, bags, CI) | :material-progress-wrench: scenarios and bags done; CI to do |
 | F: Docker (base image, compose profiles) | :material-circle-outline: planned |

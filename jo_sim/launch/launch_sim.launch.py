@@ -21,7 +21,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-from jo_sim.world_tools import prepare_world, resolve_world, resource_dirs, world_settings
+from jo_sim.world_tools import load_obstacles, prepare_world, resolve_world, resource_dirs, world_settings
 
 PKG = 'jo_sim'
 
@@ -71,8 +71,10 @@ def world_and_gazebo(context):
             raise RuntimeError(f'[jo_sim] rtf:={rtf}: not a number') from None
         if rtf < 0:
             raise RuntimeError(f'[jo_sim] rtf:={rtf:g}: must be >= 0 (0 = as fast as possible)')
+    obstacles_file = LaunchConfiguration('obstacles').perform(context).strip()
+    obstacles = load_obstacles(obstacles_file) if obstacles_file else None
     patched, changes = prepare_world(world, st['latitude'], st['longitude'], st['elevation'],
-                                     rtf=rtf if rtf != '' else None)
+                                     rtf=rtf if rtf != '' else None, obstacles=obstacles)
     gui = truthy(LaunchConfiguration('gui').perform(context))
     paused = truthy(LaunchConfiguration('paused').perform(context))
     gz_args = ('' if paused else '-r ') + f"-v{LaunchConfiguration('gz_verbosity').perform(context)} "
@@ -86,6 +88,8 @@ def world_and_gazebo(context):
     actions.append(LogInfo(msg=f"[jo_sim] spawn x {st['x']} y {st['y']} z {st['z']} yaw {st['yaw']}"))
     actions += [LogInfo(msg=f'[jo_sim]   {c}') for c in changes]
     actions += [AppendEnvironmentVariable('GZ_SIM_RESOURCE_PATH', d) for d in resource_dirs(world)]
+    # jo_sim's own Gazebo systems (WaypointMover, for moving obstacles)
+    actions.append(AppendEnvironmentVariable('GZ_SIM_SYSTEM_PLUGIN_PATH', os.path.join(get_package_prefix(PKG), 'lib')))
     actions.append(IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')),
@@ -150,6 +154,8 @@ def generate_launch_description():
                                           'empty = sidecar, else Pisa'),
         DeclareLaunchArgument('longitude', default_value='', description='[deg] GNSS datum, see latitude'),
         DeclareLaunchArgument('elevation', default_value='', description='[m] GNSS datum, see latitude'),
+        DeclareLaunchArgument('obstacles', default_value='',
+                              description='YAML file of moving obstacles added to the world (see Worlds)'),
     ]
     args += [DeclareLaunchArgument(s, default_value='true', description=f'Publish the {s} topics')
              for s in SENSOR_BRIDGES]

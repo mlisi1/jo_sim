@@ -27,6 +27,8 @@
   <exec_depend>velodyne_laserscan</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>rviz2</exec_depend>
+  <depend>gz_sim_vendor</depend>
+  <depend>gz_plugin_vendor</depend>
   <exec_depend>nav2_msgs</exec_depend>
   <exec_depend>lifecycle_msgs</exec_depend>
   <exec_depend>tf2_ros_py</exec_depend>

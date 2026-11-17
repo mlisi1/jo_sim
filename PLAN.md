@@ -470,18 +470,28 @@ Findings:
   - **Track finding (for the re-tuning below), one run:** a straight 0.5 m/s command for 4 s turned
     the yaw 0.70 -> 1.06 rad, and a 0.5 rad/s turn command gave 0.74 rad/s.
     Both resolved, see "Track model re-tuning" below: the drift was a collision, the turn gain is now calibrated.
-- **D3 dynamic obstacles**, declared in the world sidecar and injected by the preprocessor,
-  toggled with `obstacles:=true|false`:
-  - *actors*: animated people on scripted waypoints (realistic, no physics);
-  - *moving models*: physical boxes/carts driven along paths (TrajectoryFollower or a ROS node),
-    can block the robot, can be reactive.
-  Use: `dynamic-obstacle-layer` branch, Nav2 replanning/recoveries, GLIM/RTAB-Map robustness to
-  moving points. To verify first: whether RGL sees animated actor meshes.
-  ```yaml
-  obstacles:
-    - {type: person, path: [[2,0],[2,6],[-2,6]], speed: 1.2, loop: true}
-    - {type: box, size: [0.5,0.5,1.0], path: [[5,-3],[5,3]], speed: 0.6, start_delay: 10}
-  ```
+- **D3 dynamic obstacles: done 2026-11-17.**
+  - **Gazebo actors don't work:** the RGL lidar sees nothing of them, because RGLServerPluginManager
+    only takes entities with Visual + Geometry, and a skinned actor has neither. Verified: 0 returns
+    from an actor walking 3 m ahead.
+  - **Moving models instead:** `jo_sim/src/waypoint_mover.cc`, a Gazebo system
+    (`jo_sim::WaypointMover`, `libjo_sim_waypoint_mover.so`). It teleports its model along
+    waypoints with WorldPoseCmd, on sim time. Modes: pingpong, loop, once; pause, delay,
+    face_motion; optional `yield_to` / `yield_distance`. RGL updates entity transforms every step,
+    so the lidar sees them: about 600 returns from a person 3 m ahead, moving at the commanded speed.
+  - **Declared** with `obstacles:=<file.yaml>` (launch_sim) or `obstacles:` in a scenario. The
+    preprocessor adds them (`world_tools._add_obstacles`) and writes the world as
+    `<world>.obstacles_<hash>.sdf`, so a sim on the same world without obstacles isn't affected.
+    Not in the world sidecar yet: add it if needed.
+  - **Scenario runner:** reads the true obstacle poses (gz-transport, `dynamic_pose/info`) and
+    records the minimum base_link to surface distance at 100 Hz. Criterion `min_obstacle_distance`.
+  - **`office_crossing`:** a person crosses the corridor at y = 3. With `yield_distance: 1.2`,
+    2 of 2 runs PASS (closest approach 0.74 and 0.67 m).
+  - **Nav2 finding (deferred, not tuned: see the scope rule):** without yield, 1 of 2 runs collided.
+    The walker crossed the robot's path during goal 2 (min distance -0.075 m). The kinematic
+    obstacle shoved the robot, localization went 3.8 m off, and the goal aborted. The other run
+    passed (goal 1 took 15 s instead of 8, so Nav2 slowed or waited). Nav2 doesn't reliably avoid a
+    person crossing its path. Relevant for the `dynamic-obstacle-layer` branch.
 - **Track model re-tuning:** `steering_efficiency` calibrated on 2026-11-17 (jo_description `6be30be`):
   0.5 -> 0.707.
   - On a flat plane, before: the speed ratio was 1.000 with no yaw drift, but the yaw rate was 1.413x

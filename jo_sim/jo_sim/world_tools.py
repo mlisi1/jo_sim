@@ -19,6 +19,7 @@
     white diffuse;
   - duplicate top-level model names (an error in Harmonic) are made unique.
 """
+import hashlib
 import io
 import json
 import os
@@ -656,9 +657,11 @@ def _is_placeholder_datum(sc):
     return val('latitude_deg') == 0.0 and val('longitude_deg') == 0.0
 
 
-def prepare_world(world_path, latitude, longitude, elevation=0.0, out_dir=OUT_DIR, rtf=None):
+def prepare_world(world_path, latitude, longitude, elevation=0.0, out_dir=OUT_DIR, rtf=None,
+                  obstacles=None):
     """Write a patched copy of the world and return (path, list of changes).
-    rtf: target real-time factor (None = the world's own, 0 = as fast as possible)."""
+    rtf: target real-time factor (None = the world's own, 0 = as fast as possible).
+    obstacles: list of moving obstacles (see load_obstacles), added as models."""
     tree = ET.parse(world_path)
     root = tree.getroot()
     world = root.find('world')
@@ -706,7 +709,98 @@ def prepare_world(world_path, latitude, longitude, elevation=0.0, out_dir=OUT_DI
     if rtf is not None:
         _set_rtf(world, float(rtf), changes)
 
+    stem = os.path.splitext(os.path.basename(world_path))[0]
+    if obstacles:
+        _add_obstacles(world, obstacles, changes)
+        # Another file name: a sim on the same world without obstacles must not load this one
+        digest = hashlib.sha1(json.dumps(obstacles, sort_keys=True).encode()).hexdigest()[:8]
+        stem += f'.obstacles_{digest}'
+
     os.makedirs(out_dir, exist_ok=True)
-    out = os.path.join(out_dir, os.path.splitext(os.path.basename(world_path))[0] + '.sdf')
+    out = os.path.join(out_dir, stem + '.sdf')
     tree.write(out, encoding='unicode', xml_declaration=True)
     return out, changes
+
+
+# ── Moving obstacles (D3) ──────────────────────────────────────────────────
+# Shape -> (SDF geometry, height). person: a 0.5 m x 1.7 m cylinder, about a walking person.
+OBSTACLE_SHAPES = {
+    'person': lambda o: (f"<cylinder><radius>{o.get('radius', 0.25)}</radius>"
+                         f"<length>{o.get('height', 1.7)}</length></cylinder>", o.get('height', 1.7)),
+    'cylinder': lambda o: (f"<cylinder><radius>{o.get('radius', 0.3)}</radius>"
+                           f"<length>{o.get('height', 1.0)}</length></cylinder>", o.get('height', 1.0)),
+    'box': lambda o: ("<box><size>{} {} {}</size></box>".format(*o.get('size', [0.5, 0.5, 1.0])),
+                      o.get('size', [0.5, 0.5, 1.0])[2]),
+}
+OBSTACLE_KEYS = {'name', 'shape', 'radius', 'height', 'size', 'color', 'speed', 'mode', 'pause',
+                 'delay', 'face_motion', 'waypoints', 'yield_distance'}
+
+
+def load_obstacles(path):
+    """Obstacles from a YAML file: a list, or a mapping with an `obstacles:` list. Each one:
+        - name: walker                 # optional (obstacle_<n>)
+          shape: person                # person | cylinder | box
+          radius: 0.25, height: 1.7    # person / cylinder; box: size: [x, y, z]
+          color: [0.9, 0.4, 0.1]
+          waypoints: [[3, -2], [3, 2]] # world x y, at least 2
+          speed: 0.8                   # [m/s]
+          mode: pingpong               # pingpong | loop | once
+          pause: 1.0                   # [s] at each waypoint
+          delay: 0.0                   # [s, sim] before starting
+          yield_distance: 1.0          # [m] optional: stop while the robot is this close ahead
+    """
+    import yaml
+    with open(path) as f:
+        data = yaml.safe_load(f) or []
+    if isinstance(data, dict):
+        data = data.get('obstacles') or []
+    return check_obstacles(data, path)
+
+
+def check_obstacles(obstacles, where='obstacles'):
+    if not isinstance(obstacles, list):
+        raise ValueError(f'{where}: obstacles must be a list')
+    for i, o in enumerate(obstacles):
+        if not isinstance(o, dict):
+            raise ValueError(f'{where}: obstacle {i + 1} is not a mapping')
+        unknown = set(o) - OBSTACLE_KEYS
+        if unknown:
+            raise ValueError(f"{where}: obstacle {i + 1}: unknown keys {', '.join(sorted(unknown))}")
+        if o.get('shape', 'person') not in OBSTACLE_SHAPES:
+            raise ValueError(f"{where}: obstacle {i + 1}: shape must be one of {', '.join(OBSTACLE_SHAPES)}")
+        wps = o.get('waypoints') or []
+        if len(wps) < 2 or any(not isinstance(w, (list, tuple)) or len(w) < 2 for w in wps):
+            raise ValueError(f'{where}: obstacle {i + 1}: needs 2 or more waypoints [x, y]')
+        if o.get('mode', 'pingpong') not in ('pingpong', 'loop', 'once'):
+            raise ValueError(f'{where}: obstacle {i + 1}: mode must be pingpong, loop or once')
+    return obstacles
+
+
+def _add_obstacles(world, obstacles, changes):
+    """Each obstacle is a non-static model without gravity, moved by the jo_sim WaypointMover
+    system (lib/libjo_sim_waypoint_mover.so): kinematic, on sim time, seen by every sensor."""
+    for i, o in enumerate(obstacles):
+        name = o.get('name', f'obstacle_{i + 1}')
+        geometry, height = OBSTACLE_SHAPES[o.get('shape', 'person')](o)
+        r, g, b = o.get('color', [0.9, 0.4, 0.1])
+        x0, y0 = o['waypoints'][0][:2]
+        z = height / 2.0
+        wps = ''.join(f'<waypoint>{w[0]} {w[1]} {z}</waypoint>' for w in o['waypoints'])
+        world.append(ET.fromstring(f'''<model name="{name}">
+  <pose>{x0} {y0} {z} 0 0 0</pose>
+  <link name="link">
+    <gravity>false</gravity>
+    <inertial><mass>70</mass><inertia><ixx>17</ixx><iyy>17</iyy><izz>2</izz></inertia></inertial>
+    <collision name="collision"><geometry>{geometry}</geometry></collision>
+    <visual name="visual"><geometry>{geometry}</geometry>
+      <material><ambient>{r} {g} {b} 1</ambient><diffuse>{r} {g} {b} 1</diffuse></material></visual>
+  </link>
+  <plugin filename="jo_sim_waypoint_mover" name="jo_sim::WaypointMover">
+    <speed>{o.get('speed', 0.8)}</speed><mode>{o.get('mode', 'pingpong')}</mode>
+    <pause>{o.get('pause', 0.0)}</pause><delay>{o.get('delay', 0.0)}</delay>
+    <face_motion>{str(o.get('face_motion', True)).lower()}</face_motion>{wps}
+    {f"<yield_to>jo</yield_to><yield_distance>{o['yield_distance']}</yield_distance>" if o.get('yield_distance') else ''}
+  </plugin>
+</model>'''))
+        changes.append(f"added moving obstacle {name} ({o.get('shape', 'person')}, "
+                       f"{len(o['waypoints'])} waypoints, {o.get('speed', 0.8)} m/s)")
