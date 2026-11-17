@@ -82,14 +82,13 @@ Push the submodules first, so the superproject never points to unpushed commits.
    - Phases C, E, F
    - D3 obstacles and track re-tuning
 
-**Container state** (`jo_sim-jo-sim-1`, image built ~2026-11-16 morning):
-- The **image** contains glim_ros2 `50f7670`. Inside the running container `~/src/glim_ros2` is checked out
-  at `5c89eaa` (current `dev`) and rebuilt. A new container, or a container rebuilt without
-  `--no-cache`, starts again from `50f7670`: check out `5c89eaa` and run
-  `colcon build --symlink-install --packages-select glim_ros`, or rebuild the image.
-- The container is built with the `startup_hold` change (jo_sim `5f47b80`).
-- Test leftovers: `/tmp/scratch` (probe scripts) and `/tmp/glimrep` (logs, probe json) in the container.
-  They are lost when the container is recreated; the harness is described under "GLIM startup" below.
+**Container state** (`jo_sim-jo-sim-1`, image rebuilt and container recreated 2026-11-17):
+- glim_ros2 is pinned in the image with the `GLIM_ROS_COMMIT` build arg (`.env`, currently `dev`
+  `da3fae1`): a late layer checks it out and rebuilds only glim_ros. To follow a new glim_ros2
+  commit, set it in `.env` and run `docker compose build` (about a minute), then recreate the container.
+- Test leftovers: `/tmp/scratch` (probe scripts) and `/tmp/glimrep` (logs) in the container, lost
+  when it is recreated. The 2026-11-16 startup logs and the EKF probe data from before the
+  recreation are gone (the EKF probe data was copied out for the session only).
 
 ### GLIM startup (2026-11-16)
 - **The "1 start in 4" divergence did not reproduce:** 34/34 headless starts clean in office_cpr,
