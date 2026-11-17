@@ -444,7 +444,16 @@ Findings:
 
 - **D1 sensors**: noise models of Xsens, VLP-16, D456. Lidar must reproduce the Velodyne `ring` /
   per-point `time` fields and end-of-sweep stamping (GLIM deskewing depends on it); RealSense
-  depth encoding (16UC1 mm vs Gazebo 32FC1 m) to be evaluated.
+  depth encoding: **done 2026-11-17**.
+  - New node `depth_to_mm`: Gazebo's `/sim/<cam>_camera/depth_raw` (32FC1, m) -> the driver's
+    `aligned_depth_to_color/image_raw`, 16UC1 mm with 0 = no data (robot: `depth_format: Z16`,
+    `align_depth`, in jo-zotac `front_d455.yaml`). It publishes through image_transport, so
+    `compressedDepth` exists.
+  - Verified: max |mm - 1000*m| = 0.5 (rounding), invalid pixels -> 0, ~30 Hz, both cameras.
+  - The only consumer is RTAB-Map's `rgbd_odometry` (`visual_odom.launch.py`).
+  - **Noted, not changed:** the sim renders 640x480, while the robot's colour stream is 1280x720 (a
+    larger render costs GPU). The depth clip 0.35-8 m in `d456.xacro` isn't applied: depth goes up
+    to ~20 m.
 - **D2 odometry**: the robot has none, so `TrackedVehicle` odometry stays out of the ROS interface
   (no topic, no TF). **Ground truth: done (2026-11-17).**
   - `OdometryPublisher` in a sim-only `<gazebo>` tag of `jo_main.urdf.xacro` (jo_description;

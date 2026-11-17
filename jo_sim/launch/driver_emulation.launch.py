@@ -2,6 +2,7 @@
 
 * RealSense (realsense2_camera, publish_tf: true): TF tree below <camera>_link, which on the robot
   comes from the driver and therefore is not in jo_description.
+* RealSense depth (depth_format Z16): Gazebo's 32FC1 metres -> 16UC1 millimetres, 0 = no data.
 * Gazebo's RGB-D point cloud is restamped from the optical frame (shared with the images) to the
   non-optical depth frame, because Gazebo builds it in the X-forward convention.
 * Velodyne (velodyne-all-nodes-VLP16-launch.py): velodyne_emulation gives the RGL cloud the driver's
@@ -51,6 +52,13 @@ def drivers(context):
         respawn=True, respawn_delay=2.0,
     ))
     for cam in cameras:
+        # Gazebo depth is 32FC1 metres; the driver (depth_format Z16) publishes 16UC1 millimetres
+        actions.append(Node(
+            package='jo_sim', executable='depth_to_mm', name=f'sim_{cam}_depth_to_mm',
+            parameters=[{'output_topic': f'/{cam}/camera/aligned_depth_to_color/image_raw',
+                         'use_sim_time': True}],
+            remappings=[('input', f'/sim/{cam}/depth_raw')],
+        ))
         actions.append(Node(
             package='jo_sim', executable='frame_restamp', name=f'sim_{cam}_points_restamp',
             parameters=[{'frame_id': f'{cam}_depth_frame', 'use_sim_time': True}],

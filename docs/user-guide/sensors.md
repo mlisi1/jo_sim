@@ -28,6 +28,8 @@ sensor:
 - **RealSense:**
   - the TF tree below `<cam>_camera_link`, which on the robot comes from the driver
     (`publish_tf: true`) and not from the URDF;
+  - the depth image is converted from Gazebo's 32-bit float metres to the driver's 16-bit
+    millimetres (`16UC1`, 0 = no data), as with `depth_format: Z16` on the robot;
   - the camera cloud is restamped to the depth frame.
 
 ## Noise
@@ -51,8 +53,9 @@ with the robot at rest.
 
 - The RGL sweep is captured at one instant, so the per-point `time` is 0. The sim's GLIM config uses
   `global_shutter_lidar: true` for that reason. The robot's config keeps `false`.
-- The RealSense depth encoding is still to be evaluated: Gazebo gives 32-bit float metres, the real
-  driver 16-bit millimetres ([Roadmap](../developer/roadmap.md)).
+- RealSense resolution: the sim renders colour and depth at 640×480; the robot's colour stream is
+  1280×720 (and its aligned depth with it).
+- RealSense depth range: up to ~20 m in the sim (the depth clip in `d456.xacro` is not applied).
 - The lidar does not see heightmap terrain.
 
 !!! planned "Planned content"

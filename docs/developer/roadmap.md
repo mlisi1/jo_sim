@@ -8,7 +8,7 @@ The working roadmap, with session notes, is
 | A: sync with the robot's stack | :material-check-circle: done |
 | B: drop-in worlds (preprocessor, sidecar yaml, `check_worlds --robot`) | :material-check-circle: done |
 | C: launch ergonomics (`paused`, `rtf`, `sim_control`, `./jo`) | :material-check-circle: done |
-| D1: sensor fidelity (noise, Velodyne fields) | :material-progress-wrench: RealSense depth encoding to be evaluated |
+| D1: sensor fidelity (noise, Velodyne fields, RealSense depth encoding) | :material-check-circle: done |
 | D2: ground truth | :material-check-circle: done |
 | D3: dynamic obstacles | :material-circle-outline: planned |
 | Track model re-tuning (steering calibrated against the ground truth) | :material-check-circle: done |

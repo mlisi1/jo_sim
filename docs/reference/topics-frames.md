@@ -10,7 +10,7 @@
 | `/gnss` | `sensor_msgs/NavSatFix` | `imu_link` | out |
 | `/<cam>_camera/camera/color/image_raw` (+ transports) | `sensor_msgs/Image` | `<cam>_camera_color_optical_frame` | out |
 | `/<cam>_camera/camera/color/camera_info` | `sensor_msgs/CameraInfo` | `<cam>_camera_color_optical_frame` | out |
-| `/<cam>_camera/camera/aligned_depth_to_color/image_raw` | `sensor_msgs/Image` | `<cam>_camera_color_optical_frame` | out |
+| `/<cam>_camera/camera/aligned_depth_to_color/image_raw` (+ transports) | `sensor_msgs/Image` (16UC1, mm) | `<cam>_camera_color_optical_frame` | out |
 | `/<cam>_camera/camera/aligned_depth_to_color/camera_info` | `sensor_msgs/CameraInfo` | `<cam>_camera_color_optical_frame` | out |
 | `/<cam>_camera/camera/depth/color/points` | `sensor_msgs/PointCloud2` | `<cam>_camera_depth_frame` | out |
 | `/cmd_vel` | `geometry_msgs/Twist` | | in |
@@ -27,6 +27,7 @@ Nothing in the stack may consume these.
 |---|---|---|
 | `/sim/ground_truth/odom` | `nav_msgs/Odometry` | the true pose, `world` → `base_link`, 100 Hz |
 | `/sim/velodyne_points_raw` | `sensor_msgs/PointCloud2` | the RGL cloud before `velodyne_emulation` |
+| `/sim/<cam>_camera/depth_raw` | `sensor_msgs/Image` (32FC1, m) | the depth image before `depth_to_mm` |
 | `/sim/<cam>_camera/points_raw` | `sensor_msgs/PointCloud2` | the RGB-D cloud before `frame_restamp` |
 
 !!! planned "Planned content (G3)"

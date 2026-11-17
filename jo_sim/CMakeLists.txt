@@ -5,6 +5,7 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(image_transport REQUIRED)
 
 add_executable(frame_restamp src/frame_restamp.cpp)
 target_compile_features(frame_restamp PUBLIC cxx_std_17)
@@ -14,7 +15,11 @@ add_executable(velodyne_emulation src/velodyne_emulation.cpp)
 target_compile_features(velodyne_emulation PUBLIC cxx_std_17)
 target_link_libraries(velodyne_emulation PUBLIC rclcpp::rclcpp ${sensor_msgs_TARGETS})
 
-install(TARGETS frame_restamp velodyne_emulation DESTINATION lib/${PROJECT_NAME})
+add_executable(depth_to_mm src/depth_to_mm.cpp)
+target_compile_features(depth_to_mm PUBLIC cxx_std_17)
+target_link_libraries(depth_to_mm PUBLIC rclcpp::rclcpp image_transport::image_transport ${sensor_msgs_TARGETS})
+
+install(TARGETS frame_restamp velodyne_emulation depth_to_mm DESTINATION lib/${PROJECT_NAME})
 
 # jo_sim.world_tools (used by the launch files and list_worlds)
 ament_python_install_package(${PROJECT_NAME})

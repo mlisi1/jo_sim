@@ -29,9 +29,9 @@ flowchart TB
 
 | Arrow | Topics |
 |---|---|
-| raw | `/sim/velodyne_points_raw`, `/sim/<cam>_camera/points_raw` |
+| raw | `/sim/velodyne_points_raw`, `/sim/<cam>_camera/depth_raw`, `/sim/<cam>_camera/points_raw` |
 | sensors | `/imu/data`, `/gnss`, the camera images and infos, `/clock` |
-| driver topics | `/velodyne_points`, `/scan`, `/<cam>_camera/camera/depth/color/points`, the RealSense TF tree |
+| driver topics | `/velodyne_points`, `/scan`, `.../aligned_depth_to_color/image_raw` (16UC1), `/<cam>_camera/camera/depth/color/points`, the RealSense TF tree |
 | TF | the URDF tree, from the same URDF as the robot |
 | cmd_vel | `/cmd_vel` → `/model/jo/cmd_vel` |
 | `/sim/` only | `/sim/ground_truth/odom`, for evaluation; the stack never reads it |
