@@ -10,10 +10,11 @@ through it.
 - Global settings: `docker/utils/dendROS/defaults.yaml`, mounted, so it can be edited without a
   rebuild.
 
-<div class="media-ph" data-kind="image" markdown>
-<span class="media-ph-kind">Image</span>
-<p>The DendROS launch TUI running <code>full_navigation</code>.</p>
-</div>
+<figure class="jo-media">
+<img src="https://raw.githubusercontent.com/mlisi1/DendROS/main/docs/assets/images/screenshots/showcase.gif" alt="DendROS TUI mode: filtering a live launch, colorized ros2 CLI, and remote commands" loading="lazy">
+<figcaption>DendROS's TUI: filtering a live launch, the coloured <code>ros2</code> CLI and remote
+commands (from the <a href="https://github.com/mlisi1/DendROS">DendROS repository</a>).</figcaption>
+</figure>
 
 ## Testudo (experimental)
 
@@ -21,9 +22,20 @@ through it.
 robot interface the simulator must expose. Give it some seconds, because rates and staleness need
 time. Topics that publish only on events read `◌ idle`, and inputs nobody publishes read `◌ input`.
 
+<figure class="jo-media">
+<img src="https://raw.githubusercontent.com/mlisi1/testudo/dev/docs/media/testudo_dashboard.png" alt="The Testudo dashboard" loading="lazy">
+<figcaption>The Testudo dashboard (from the <a href="https://github.com/mlisi1/testudo">Testudo
+repository</a>).</figcaption>
+</figure>
+
 `health_headless` runs the same session without the TUI, for scripts and agents. It publishes the
 results until it's stopped: `/testudo/overall` (the verdict), `/testudo/<plugin>` and
 `/testudo/vitals` (one row per topic). On the full stack, with the robot idle, every check is OK.
 
 Testudo has no one-shot check any more. For a report with an exit code, record a bag and run
 `ros2 run testudo testudo replay <bag>`, which exits 0, 1 or 2.
+
+<figure class="jo-media">
+<img src="https://raw.githubusercontent.com/mlisi1/testudo/dev/docs/media/testudo_replay.gif" alt="testudo replay on a bag" loading="lazy">
+<figcaption><code>testudo replay</code> on a bag (from the Testudo repository).</figcaption>
+</figure>

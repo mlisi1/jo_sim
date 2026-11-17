@@ -43,9 +43,10 @@ teleop            # teleop_twist_keyboard, publishing /cmd_vel with sim time
 ```
 
 <figure class="jo-media">
-<video src="../../assets/videos/teleop.mp4" poster="../../assets/videos/teleop.jpg" controls muted loop playsinline preload="none"></video>
-<figcaption>Driving Jo in office_cpr: Gazebo on the left, RViz on the right (the lidar cloud and the
-two cameras). Here the commands come from a script; <code>teleop</code> publishes the same <code>/cmd_vel</code>.</figcaption>
+<video src="../../assets/videos/first_run.mp4" poster="../../assets/videos/first_run.jpg" autoplay muted loop playsinline></video>
+<figcaption>Driving Jo in office_cpr: Gazebo on the left, RViz on the right (the lidar, coloured by
+height, and the clouds of the two cameras), Jo's front camera at the top right. The commands come
+from a script; <code>teleop</code> publishes the same <code>/cmd_vel</code>.</figcaption>
 </figure>
 
 The base takes `/cmd_vel`, as the Bunker driver does on the robot. Like the real robot, it publishes

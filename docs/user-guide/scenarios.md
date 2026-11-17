@@ -95,7 +95,9 @@ person crossing the corridor at y = 3.
 !!! warning "GPS scenarios"
     `nav: gps` sends goals in the `map` frame like `local`. It has not been validated yet.
 
-<div class="media-ph short" data-kind="video" markdown>
-<span class="media-ph-kind">Video</span>
-<p>A scenario run with the GUI (<code>--gui --rviz</code>): goals sent, the result printed.</p>
-</div>
+<figure class="jo-media">
+<video src="../../assets/videos/scenario.mp4" poster="../../assets/videos/scenario.jpg" autoplay muted loop playsinline></video>
+<figcaption><code>./jo scenario office_crossing</code> (run at 3× speed): the walker crosses the corridor and
+stops while Jo is close ahead of it; Jo reaches both goals. The terminal shows the runner's real
+output, with the checks against the pass criteria.</figcaption>
+</figure>

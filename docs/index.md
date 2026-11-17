@@ -30,11 +30,9 @@ ownership and rates. So the real navigation stack runs on it unchanged.</p>
 
 </div>
 
-<div class="media-ph" data-kind="video" markdown>
-<span class="media-ph-kind">Video</span>
-<p>Hero reel (~30 s): <code>./jo sim -n local</code> in office_cpr. Gazebo and RViz side by side,
-the GLIM map growing, a Nav2 goal reached. Then a GPS goal in a city world.</p>
-</div>
+<figure class="jo-media">
+<video src="assets/videos/hero.mp4" poster="assets/videos/hero.jpg" autoplay muted loop playsinline></video>
+</figure>
 
 ## What you get
 

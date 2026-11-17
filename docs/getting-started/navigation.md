@@ -21,10 +21,10 @@ Wait for `Managed nodes are active` in the output, then send a goal with RViz's
 **2D Goal Pose** tool.
 
 <figure class="jo-media">
-<video src="../../assets/videos/nav_local.mp4" poster="../../assets/videos/nav_local.jpg" controls muted loop playsinline preload="none"></video>
-<figcaption>Local navigation in office_cpr: a goal 4.5 m down the corridor, then back. RViz shows the
-costmaps, the planned path and the lidar. The goals go to <code>/goal_pose</code>, as the 2D Goal Pose
-tool does.</figcaption>
+<video src="../../assets/videos/nav_local.mp4" poster="../../assets/videos/nav_local.jpg" autoplay muted loop playsinline></video>
+<figcaption>Local navigation in office_cpr (1.6× speed): a goal 4.5 m ahead, then back to the start.
+RViz shows the local and global costmaps, the planned path (amber) and the lidar; Gazebo at the top
+right. The goals go to <code>/goal_pose</code>, as the 2D Goal Pose tool does.</figcaption>
 </figure>
 
 The lidar starts 2 s (sim time) after spawn. The robot is spawned slightly above the ground and
@@ -36,10 +36,12 @@ drops, and GLIM must initialize with the robot at rest.
 ./jo sim -w small_city -n gps
 ```
 
-<div class="media-ph" data-kind="video" markdown>
-<span class="media-ph-kind">Video</span>
-<p>GPS navigation in a city world: a GPS goal, the robot following it, the navsat-derived pose.</p>
-</div>
+<figure class="jo-media">
+<video src="../../assets/videos/nav_gps.mp4" poster="../../assets/videos/nav_gps.jpg" autoplay muted loop playsinline></video>
+<figcaption>GPS navigation in small_city (2× speed): two GPS waypoints sent to Nav2's
+<code>follow_gps_waypoints</code>, 15 m west to the crossroads, then 12 m north. Top right, the
+<code>/gnss</code> fix the robot publishes.</figcaption>
+</figure>
 
 Worlds without `<spherical_coordinates>` get a GNSS datum from their sidecar yaml, or from
 `latitude:=`, `longitude:=` and `elevation:=` (see [Worlds](../user-guide/worlds.md)).

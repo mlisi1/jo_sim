@@ -63,10 +63,73 @@ publishes the docs site.
    `/cmd_vel`, `sim_control`; RViz goals sent as topics). GPU use for the screenshots, the videos and
    the thumbnail renderer is OK **when it's free**: check `nvidia-smi` first and coordinate with the
    other sessions through SendMessage (testudo-c2 was watching domain 77 on 2026-11-17).
-   - **Where:** on Michele's display `:0`, **external monitor HDMI-1-0** (2560×1440 at x=2560), not a
-     virtual display (Xvfb works but renders the GUIs in software, ~10 fps). Warn Michele before each
-     batch. Windows are placed with `docs/gen/media/kwin_place.sh` (KWin script, Plasma 5.27) and
-     captured with ffmpeg x11grab. Final videos 1920×1080.
+   - **v1 (screen recordings on HDMI-1-0) was rejected by Michele (2026-11-17 evening):** "low
+     effort", wants composed, catchy videos. The HDMI monitor is driven by the NVIDIA GPU (reverse
+     PRIME) and *crashes when Gazebo starts*: never record on it again. The 3 v1 videos were dropped
+     from the commit. Michele: MP4 is fine (GIF at his alias settings: 128 MB for 27 s), storyboard OK,
+     PC free for Claude to work autonomously.
+   - **v2 pipeline (off-screen, frame-locked):** `docs/gen/media/rig.py` runs in the container. The
+     sim is paused and stepped one video frame (1/30 s) at a time: set the camera pose(s) → step →
+     save the Gazebo camera frame (camera sensor, headless GPU) → grab RViz / GLIM viewer from Xvfb
+     `:99` (software GL, docs-only RViz configs without panels). Smooth and synchronized whatever the
+     machine speed. Composition on the host with ffmpeg + PIL overlays: title cards, captions,
+     split-screen, picture-in-picture, crossfades, in the site style (Inter, JetBrains Mono, navy /
+     cyan / amber, logo). Fonts in `~/.cache/jo_sim_media/fonts`. Clips: MP4 H.264, `autoplay muted
+     loop playsinline`, no controls (they behave like GIFs).
+   - **v2 shot list:**
+     - V1 hero reel (index), 1920×1080, ~25 s: logo card → orbit around Jo (office) → split Gazebo
+       chase / RViz lidar while driving → Nav2 goal with path → small_city aerial GPS drive → GLIM map
+       time-lapse → closing card `./jo sim`.
+     - V2 first-run, ~10 s: split Gazebo chase cam / RViz lidar + cameras, driving.
+     - V3 navigation local, ~12 s: RViz top-down with costmaps and path, Gazebo chase PiP.
+     - V4 navigation GPS, ~12 s: small_city aerial follow, live `/gnss` lat/lon overlay.
+     - V5 sim-control, ~10 s: rendered terminal with the real `sim_control` outputs, Gazebo view
+       advancing only when stepped / playing.
+     - V6 scenarios, ~12 s: office_crossing (walker obstacle) orbit/aerial, overlay of the real
+       `./jo scenario office_crossing` output (PASS).
+     - V7 GLIM maps, ~12 s: GLIM viewer time-lapse of a drive loop, Gazebo PiP, then `offline_viewer`.
+     - Images: install terminal (`./jo up`, `./jo shell` with the DendROS banner) and the DendROS TUI,
+       both in a real Konsole on Xvfb; ground-truth vs GLIM vs EKF plot from a scenario bag.
+   - **World thumbnails v2:** no robot; framing from a top-down depth pass (extent of the non-ground
+     content), then a 3/4 view (~50° down, 45° yaw) fitting that extent; overrides for odd worlds.
+   - **Pending: testudo threshold migration** (asked by the testudo session, agreed with Michele).
+     Testudo dev d0d3aa6 (unpushed) splits severity (`warn`/`error`) from meter colours
+     (`green`/`orange`/`red`). To do together with the testudo submodule bump (now 32f7473, which
+     reads only green/orange, so migrating first would drop jo_sim's thresholds), after Michele
+     pushes testudo: `rate_hz {green: A, orange: B}` → `{warn: A, error: B}`; /scan
+     `invalid_ratio` → `{warn: 0.5, error: 0.8}`; /gnss `position_covariance` →
+     `{warn: 1.0, green: 1.0, orange: 9.0}`; both GLIM `position_covariance_trace` →
+     `{warn: 0.05, green: 0.05, orange: 0.2}`; `cpu_percent`/`memory_mb` are **mandatory**
+     (node_profiling raises a ConfigError on green/orange/red, so the whole config would fail to
+     load): `{warn: 300, error: 600}` / `{warn: 2000, error: 6000}` (behaviour-preserving) or
+     `{warn: 300}` / `{warn: 2000}` (the testudo session's recommendation: busy is degraded, not
+     broken). Michele decides. Verify: no "sets only green/orange/red" warning at load. Testudo dev 1bdd444
+     checks `rate_hz` on every declared topic, so /scan, /imu, /gnss and the cameras start being
+     checked at the bump. Measured headless at RTF 1 (docs topic table): /imu/data 200 Hz (warn
+     180), /scan 10 (9), /gnss 9.9 (9), cameras 30.3 (25): all above warn, at any RTF (the
+     testudo session confirmed rates are measured in sim time when use_sim_time is on).
+     Michele: no rush, testudo is still in development.
+   - **Status (2026-11-18): G4 done, Michele's review round applied.** Pipeline in
+     `docs/gen/media/` (rig.py, shoot.py, compose.py, videos.py, shots/, plot_ground_truth.py;
+     documented in contributing.md). Embedded videos: hero (home), first_run, nav_local, nav_gps,
+     sim_control (reshot: Jo driving, pause freezes it mid-motion, step 500, play), scenario (the
+     real runner attached to the rig), glim_map (reshot in small_city: `/glim_ros/map` in RViz while
+     Nav2 drives 15 m west and 25 m north; shot glim_city.py); ground truth plot (same run: GT vs
+     GLIM vs EKF, compared at the message stamps; light and dark images); world thumbnails v2.
+     DendROS and Testudo: the official repos' GIFs/screens, hotlinked (rule: terminal media come
+     from the official repos or are shot in **terminator**, never Konsole: colours).
+     **Open:** the install page placeholder ("./jo up finishing, then ./jo shell with the DendROS
+     banner"): there is no banner, and a real shot needs recreating the container (and shows
+     the host name in the prompt): asked Michele. Videos 19 MB in all (Pages, no LFS).
+     Possible polish: a lower GPS camera (the aerial view is mostly asphalt). Findings: RViz refuses configs without panels or with the image displays
+     disabled (so the rig crops the 3D view); RViz on Xvfb aborts at start about 1 time in 4
+     (glibc robust-mutex assertion: the rig retries); the stats message omits sim_time at 0;
+     Nav2 rejects goals sent before "Managed nodes are active" (the rig waits for it);
+     once in ~4 starts of `-n local` in small_city (2026-11-17), the EKF stayed at "Waiting for
+     clock to start..." and never published, so there was no `odom` frame and Nav2 never activated
+     (GLIM itself started; log kept in the session scratchpad, not reproduced; to investigate);
+     the scenario runner stops the sim right after the last goal. Videos: 1600×900, CRF 28,
+     ~0.2–0.3 MB/s; docs RViz clouds as flat squares (3 px points tripled the size).
 2. **G4, the media.** 31 placeholders: `grep -rn 'class="media-ph' docs` (8 images, 7 videos, the
    rest diagrams/screenshots). For each, the caption in the placeholder says what to show.
    - **Screenshots:** Gazebo GUI, RViz in each mode, the sensor views (cloud, cameras, depth), the
@@ -156,6 +219,11 @@ publishes the docs site.
   - **Affects the robot.** Deferred.
   - **Sim gap:** at spawn yaw 0 the sim IMU yaw equals GLIM's, which hides this. Check with a
     non-zero `yaw:=`, and check that the sim IMU follows the Xsens absolute-heading convention.
+- **Nav2 aborts far goals in mapless local navigation** (deferred, 2026-11-17, docs glim_city shot):
+  small_city, `-n local`, a `/goal_pose` 25 m away: `compute_path_to_pose` aborts at once ("Goal
+  failed"), presumably because the goal is outside the rolling global costmap. Goals ~8 m apart
+  work. Also seen: at an intermediate goal with a 90° final heading, Jo rotated back and forth
+  for ~4 s before settling. Not tuned (scope).
 
 ### GLIM startup (2026-11-16)
 - **The "1 start in 4" divergence did not reproduce:** 34/34 headless starts clean in office_cpr,

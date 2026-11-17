@@ -30,3 +30,21 @@ python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt
 - **The performance table** comes from `python3 docs/gen/measure_performance.py` (about 12 minutes,
   GPU). It depends on the machine, so paste it into the page with the machine and the date.
 - **The logo and home render** come from `docs/gen/render_logo/render.sh` (CPU only).
+- **The world catalogue** (thumbnails and table) comes from `python3 docs/gen/gen_world_catalogue.py`
+  (GPU, about a minute per world). Each world loads headless without the robot. A top-down depth pass
+  finds the extent of what stands on the ground, then a 3/4 view frames it. Odd worlds get an
+  override (azimuth, elevation, zoom) in `VIEWS`.
+- **The videos** are rendered off-screen, so nothing opens on your monitors. They are made in two steps:
+    1. `python3 docs/gen/media/shoot.py SHOT` runs `docs/gen/media/shots/SHOT.py` in the container,
+       on domain 79 and Gazebo partition `jo_sim_docs`. The rig (`rig.py`) pauses the world and steps
+       it one video frame at a time. A camera sensor renders each frame, and RViz or the GLIM viewer
+       run on a virtual display (Xvfb `:99`). The frames go to `~/.cache/jo_sim_media/rig/SHOT`.
+    2. `python3 docs/gen/media/videos.py NAME` composes the shots (cards, captions, splits, a
+       picture in picture, the real terminal output) with `compose.py`, then writes
+       `docs/assets/videos/NAME.mp4` and its poster. Add `--preview` for a contact sheet.
+
+    A shot takes 5 to 30 minutes, depending on the stack it runs; composing takes about a minute.
+    The ground truth page's plot comes from the same glim_city shot:
+    `python3 docs/gen/media/plot_ground_truth.py`.
+    `shots_basic.sh` (the annotated Gazebo and RViz screenshots) is the exception: it opens real
+    windows on a monitor.

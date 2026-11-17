@@ -14,9 +14,10 @@ Inside the container, `sim_control play | pause | step [N] | status` does the sa
 world's control service in the current `GZ_PARTITION`.
 
 <figure class="jo-media">
-<video src="../../assets/videos/sim_control.mp4" poster="../../assets/videos/sim_control.jpg" controls muted loop playsinline preload="none"></video>
-<figcaption>Started with <code>--paused</code>: two steps of 150 iterations (Jo, spawned 0.6 m up, drops a
-little at each), then play and pause. The RTF readout is at the bottom right of the Gazebo view.</figcaption>
+<video src="../../assets/videos/sim_control.mp4" poster="../../assets/videos/sim_control.jpg" autoplay muted loop playsinline></video>
+<figcaption>Jo driving forward on <code>/cmd_vel</code>: pause freezes it mid-motion, each
+<code>step 500</code> advances half a second of sim time (500 iterations at the 1 ms physics step),
+play lets it drive on. The terminal shows the commands' real output.</figcaption>
 </figure>
 
 ## Real-time factor

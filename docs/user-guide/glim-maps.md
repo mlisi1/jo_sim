@@ -10,13 +10,17 @@ offline_viewer           # open a saved map
 On exit, GLIM also dumps the map to `/tmp/dump` in the container. The next run overwrites it, and
 recreating the container loses it.
 
-`./jo sim -n local --glim-view` (or `glim_view:=true`) opens GLIM's live viewer.
+`./jo sim -n local --glim-view` (or `glim_view:=true`) opens GLIM's live viewer. Without it,
+GLIM still publishes its map on `/glim_ros/map` (in the `map` frame), which RViz can show:
 
-<div class="media-ph" data-kind="video" markdown>
-<span class="media-ph-kind">Video</span>
-<p>Building a map: drive around office_cpr with the GLIM viewer open, <code>save_map</code>, then
-open the map in <code>offline_viewer</code>.</p>
-</div>
+<figure class="jo-media">
+<video src="../../assets/videos/glim_map.mp4" poster="../../assets/videos/glim_map.jpg" autoplay muted loop playsinline></video>
+<figcaption>GLIM's map in small_city (4.5× speed), as Nav2 drives Jo 15 m west and then 25 m
+north. RViz shows <code>/glim_ros/map</code> coloured by height, the current scan
+(<code>/glim_ros/aligned_points</code>, cyan) and the planned path (amber); Gazebo at the top
+right. GLIM publishes the map at most every <code>map_publish_period</code> seconds (default 10;
+1 s here).</figcaption>
+</figure>
 
 ## The sim's GLIM config
 
