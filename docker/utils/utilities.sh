@@ -32,8 +32,10 @@ alias full_gps_navigation='ros2 launch jo_sim sim_bringup.launch.py front_cam:=t
 
 # Topic health (Testudo) against the robot interface: jo_sim/config/testudo.yaml (mounted source, so
 # rules added from the TUI's Options screen persist in the repo)
-alias health='~/install/testudo/lib/testudo/testudo watch -c /home/ros/src/jo_sim/config/testudo.yaml'
-alias health_check='~/install/testudo/lib/testudo/testudo check -c /home/ros/src/jo_sim/config/testudo.yaml --duration 10'
+# use_sim_time: rates and staleness on the sim clock (Testudo >= 8a65177 passes ROS args to rclpy)
+alias health='ros2 run testudo testudo watch -c /home/ros/src/jo_sim/config/testudo.yaml --ros-args -p use_sim_time:=true'
+# Same, without the TUI (scripts, agents): results on /testudo/overall, /testudo/<plugin>, /testudo/vitals
+alias health_headless='ros2 run testudo testudo watch --headless -c /home/ros/src/jo_sim/config/testudo.yaml --ros-args -p use_sim_time:=true'
 
 alias teleop='ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p use_sim_time:=true'
 alias offline_viewer='ros2 run glim_ros offline_viewer'

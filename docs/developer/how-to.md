@@ -34,7 +34,7 @@ more.
    argument and bridge tables.
 
 **Check:** `ros2 topic hz`, `ros2 topic echo --once` (frame, encoding, fields) against a bag of the
-real robot, then `health_check`.
+real robot, then `health`.
 
 ## Add a patch to the world preprocessor
 

@@ -2,8 +2,7 @@
 # (PLAN.md "Reference: real robot interface"). A sim that is not green here has drifted from the
 # robot. The robot's own config belongs to jo-zotac.
 #
-#   health                         # alias in docker/utils/utilities.sh: live TUI
-#   health_check                   # one-shot report
+#   health                         # alias in docker/utils/utilities.sh: live TUI (needs a terminal)
 #
 # Topics not declared here still get liveness and rate checks. Images and 3D point clouds are
 # presence-only unless declared (a subscription costs bandwidth), so only the ones the stack
@@ -59,6 +58,16 @@ topics:
       weight: 3
       related_topics:
         cmd_vel: /cmd_vel
+    # GLIM reports a configured constant covariance (1e-2 per axis: trace 0.03), not an estimate,
+    # so Testudo's default bound (green 0.01) would always warn
+    - name: /glim_ros/odom
+      weight: 1
+      thresholds:
+        position_covariance_trace: {green: 0.05, orange: 0.2}
+    - name: /glim_ros/lidar_odom
+      weight: 1
+      thresholds:
+        position_covariance_trace: {green: 0.05, orange: 0.2}
   diagnostic_msgs/msg/DiagnosticArray:
     - name: /diagnostics   # GLIM's diagnostic_updater, 1 Hz
       weight: 1
@@ -75,6 +84,16 @@ topics:
       weight: 1
       thresholds:
         rate_hz: {green: 0.7, orange: 0.3}   # publish_frequency 1.0
+    # GLIM's occupancy grid is published only when the map changes: idle while the robot stands still
+    - name: /glim_ros/grid
+      event_driven: true
+  # Published only while a controller is following a path
+  geometry_msgs/msg/PoseStamped:
+    - name: /motion_target
+      event_driven: true
+  visualization_msgs/msg/Marker:
+    - name: /slowdown
+      event_driven: true
   nav2_msgs/msg/BehaviorTreeLog:
     - name: /behavior_tree_log
       weight: 1

@@ -20,7 +20,8 @@
 | `teleop` | `teleop_twist_keyboard` with sim time | |
 | `save_map` | `ros2 service call /glim_ros/save_map std_srvs/srv/Trigger` | |
 | `offline_viewer` | `ros2 run glim_ros offline_viewer` | |
-| `health`, `health_check` | Testudo `watch` / `check` with `jo_sim/config/testudo.yaml` | |
+| `health` | Testudo `watch` with `jo_sim/config/testudo.yaml`, on sim time | live TUI; needs a terminal |
+| `health_headless` | the same, `watch --headless` | no TUI: results on `/testudo/*` diagnostics |
 | `no_gpu` | clears the PRIME offload variables | prefix a command to render on the integrated GPU |
 
 They are defined in `docker/utils/utilities.sh` (mounted, editable without a rebuild).

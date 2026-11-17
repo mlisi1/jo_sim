@@ -17,8 +17,13 @@ through it.
 
 ## Testudo (experimental)
 
-`health` (live TUI) and `health_check` (one-shot report) check the topics against
-`jo_sim/config/testudo.yaml`: the robot interface the simulator must expose.
+`health` (a live TUI, on sim time) checks the topics against `jo_sim/config/testudo.yaml`: the
+robot interface the simulator must expose. Give it some seconds, because rates and staleness need
+time. Topics that publish only on events read `◌ idle`, and inputs nobody publishes read `◌ input`.
 
-!!! warning
-    Not reliable on the full stack yet.
+`health_headless` runs the same session without the TUI, for scripts and agents. It publishes the
+results until it's stopped: `/testudo/overall` (the verdict), `/testudo/<plugin>` and
+`/testudo/vitals` (one row per topic). On the full stack, with the robot idle, every check is OK.
+
+Testudo has no one-shot check any more. For a report with an exit code, record a bag and run
+`ros2 run testudo testudo replay <bag>`, which exits 0, 1 or 2.

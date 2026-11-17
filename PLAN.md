@@ -486,6 +486,21 @@ Findings:
     deserialized, numpy for the valid-point count), and reliable QoS depth 10. Re-checked the 10
     affected worlds: all OK.
   - **RTF varies between runs** by up to about 0.2 on heavy worlds (montreal2019 0.66 vs 0.43).
+- **Testudo on the full stack: green (2026-11-17).** The submodule is at testudo dev 32f7473, which
+  has the Testudo agent's fixes for all of ~/testudo/JO_SIM_NOTES.md plus later changes:
+  - package.xml, so `ros2 run` works again;
+  - ROS args, so use_sim_time can be set;
+  - the executor starving the last-created subscriptions;
+  - TF decimation, which always dropped map->odom;
+  - `/tf_static` QoS depth;
+  - event-driven defaults for action feedback, paths and costmap updates;
+  - idle inputs;
+  - `check` removed (the maintainer's decision);
+  - `watch --headless`.
+  jo_sim side: `health` = watch, `health_headless` = watch --headless (results on /testudo/*),
+  event_driven entries for /motion_target, /slowdown, /glim_ros/grid, and GLIM odom thresholds
+  (green 0.05: GLIM's covariance is a configured 1e-2 constant). Result: 167/167 OK with the robot
+  idle. `.gitmodules` now tracks testudo `dev`, like the other submodules.
 - **D3 dynamic obstacles: done 2026-11-17.**
   - **Gazebo actors don't work:** the RGL lidar sees nothing of them, because RGLServerPluginManager
     only takes entities with Visual + Geometry, and a skinned actor has neither. Verified: 0 returns
