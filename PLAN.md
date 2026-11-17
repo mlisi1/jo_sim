@@ -460,6 +460,7 @@ Findings:
     relative to the first ground-truth message.
   - **Track finding (for the re-tuning below), one run:** a straight 0.5 m/s command for 4 s turned
     the yaw 0.70 -> 1.06 rad, and a 0.5 rad/s turn command gave 0.74 rad/s.
+    Both resolved, see "Track model re-tuning" below: the drift was a collision, the turn gain is now calibrated.
 - **D3 dynamic obstacles**, declared in the world sidecar and injected by the preprocessor,
   toggled with `obstacles:=true|false`:
   - *actors*: animated people on scripted waypoints (realistic, no physics);
@@ -472,8 +473,19 @@ Findings:
     - {type: person, path: [[2,0],[2,6],[-2,6]], speed: 1.2, loop: true}
     - {type: box, size: [0.5,0.5,1.0], path: [[5,-3],[5,3]], speed: 0.6, start_delay: 10}
   ```
-- Track model re-tuning after the Bunker CAD update (see the D2 track finding: drift on straight
-  commands, yaw rate 1.5x the command). Measure it with the ground truth.
+- **Track model re-tuning:** `steering_efficiency` calibrated on 2026-11-17 (jo_description `6be30be`):
+  0.5 -> 0.707.
+  - On a flat plane, before: the speed ratio was 1.000 with no yaw drift, but the yaw rate was 1.413x
+    the command, at every rate.
+  - After: yaw rate and speed within 1% of the command, for turns in place (0.3-1.0 rad/s) and for
+    combined commands.
+  - Probe: drive (v, w) commands, average the body twist and yaw rate from `/sim/ground_truth/odom`
+    over the second half of each 6 s window.
+  - **The straight-line yaw drift in office_cpr (D2 track finding): explained, not a model issue.**
+    - From that spawn (x 2, y -1, yaw 0.7) the robot's front-right corner hits office geometry
+      1.7-2.5 m ahead on its right. Mesh check: surface points inside the swept footprint.
+    - From the default spawn in office_cpr, straight runs are exact both ways: speed 1.000, yaw 0.
+    - The floor along that path is flat at z = 0, with no holes (raycast).
 
 ## Phase E — Testing workflow
 
