@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""Load every world headless (without the robot) and report whether it works in Gazebo Harmonic.
+"""Load every world headless and report whether it works in Gazebo Harmonic.
 
-    ros2 run jo_sim check_worlds                 # all worlds, 25 s each
+    ros2 run jo_sim check_worlds                 # all worlds, 25 s each, without the robot
     ros2 run jo_sim check_worlds warehouse cafe  # only these
     ros2 run jo_sim check_worlds --time 40
+    ros2 run jo_sim check_worlds --robot office_cpr   # also spawn the robot and check its sensors
+
+Without --robot: load errors, real-time factor after the warm-up and whether the server survived.
+With --robot: the robot is spawned with every sensor (launch_sim) and, after the warm-up, each
+robot-interface topic is checked for its rate (from header stamps, so in sim time), the lidar for
+valid returns (the RGL lidar does not see heightmaps) and the robot for staying upright on the
+ground. Runs in its own ROS domain (--domain) as well.
 
 For each world: load errors, real-time factor after the warm-up and whether the server survived.
 Results are saved to $JO_SIM_WORLDS/.cache/world_status.json (./user_worlds on the host) and shown by `list_worlds`.
@@ -18,6 +25,21 @@ import subprocess
 import time
 
 from jo_sim import world_tools as wt
+
+# Robot interface (PLAN.md "Reference: real robot interface"): topic -> (message type, expected Hz)
+SENSOR_TOPICS = {
+    '/velodyne_points': ('sensor_msgs/msg/PointCloud2', 10),
+    '/scan': ('sensor_msgs/msg/LaserScan', 10),
+    '/imu/data': ('sensor_msgs/msg/Imu', 200),
+    '/gnss': ('sensor_msgs/msg/NavSatFix', 10),
+}
+for _cam in ('front_camera', 'back_camera'):
+    SENSOR_TOPICS.update({
+        f'/{_cam}/camera/color/image_raw': ('sensor_msgs/msg/Image', 30),
+        f'/{_cam}/camera/color/camera_info': ('sensor_msgs/msg/CameraInfo', 30),
+        f'/{_cam}/camera/aligned_depth_to_color/image_raw': ('sensor_msgs/msg/Image', 30),
+        f'/{_cam}/camera/depth/color/points': ('sensor_msgs/msg/PointCloud2', 30),
+    })
 
 STATUS_FILE = wt.STATUS_FILE
 
@@ -72,11 +94,125 @@ def check(name, path, seconds):
             'checked': time.strftime('%Y-%m-%d')}
 
 
+def probe_sensors(domain, seconds):
+    """Subscribe to every robot-interface topic for `seconds` (wall time) in `domain`.
+    Returns {topic: {'n', 'hz' (sim time, from header stamps), ...}}."""
+    import math
+    import rclpy
+    from rclpy.qos import qos_profile_sensor_data
+    from rosidl_runtime_py.utilities import get_message
+    from sensor_msgs_py import point_cloud2
+
+    ctx = rclpy.Context()
+    rclpy.init(context=ctx, domain_id=domain)
+    node = rclpy.create_node('check_worlds_probe', context=ctx)
+    stats = {t: {'n': 0, 'stamps': []} for t in SENSOR_TOPICS}
+
+    def cb(topic):
+        def f(msg):
+            st = stats[topic]
+            st['n'] += 1
+            st['stamps'].append(msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
+            if topic == '/velodyne_points' and st['n'] % 5 == 1:
+                xyz = point_cloud2.read_points_numpy(msg, field_names=('x', 'y', 'z'))
+                good = [p for p in xyz if all(map(math.isfinite, p)) and math.dist(p, (0, 0, 0)) > 0.3]
+                st['points'] = len(xyz)
+                st['valid'] = len(good)
+                # ground returns: the VLP-16 is ~1 m above the ground (base_link 0.45 + 0.62)
+                st['ground'] = sum(1 for p in good if p[2] < -0.6)
+            elif topic == '/scan' and st['n'] % 5 == 1:
+                st['valid_ratio'] = sum(msg.range_min <= r <= msg.range_max for r in msg.ranges) / max(1, len(msg.ranges))
+        return f
+
+    for topic, (mtype, _) in SENSOR_TOPICS.items():
+        node.create_subscription(get_message(mtype), topic, cb(topic), qos_profile_sensor_data)
+    executor = rclpy.executors.SingleThreadedExecutor(context=ctx)
+    executor.add_node(node)
+    t0 = time.time()
+    while time.time() - t0 < seconds:
+        executor.spin_once(timeout_sec=0.05)
+    executor.shutdown()
+    node.destroy_node()
+    del executor
+    rclpy.shutdown(context=ctx)
+    out = {}
+    for topic, st in stats.items():
+        s_ = st.pop('stamps')
+        st['hz'] = round((len(s_) - 1) / (s_[-1] - s_[0]), 1) if len(s_) > 2 and s_[-1] > s_[0] else None
+        out[topic] = st
+    return out
+
+
+def robot_pose(env):
+    """(z, roll, pitch) of the robot model, or None."""
+    try:
+        out = subprocess.run(['gz', 'model', '-m', 'jo', '-p'], env=env, capture_output=True,
+                             text=True, timeout=10).stdout
+    except subprocess.TimeoutExpired:
+        return None
+    v = [x.split() for x in re.findall(r'\[([-0-9.e ]+)\]', out) if len(x.split()) == 3]
+    return (float(v[0][2]), float(v[1][0]), float(v[1][1])) if len(v) >= 2 else None
+
+
+def check_robot(name, path, seconds, domain):
+    """Spawn the robot with all sensors in the world and check the robot interface."""
+    import math
+    env = dict(os.environ, GZ_PARTITION=f'jo_sim_check_{os.getpid()}', ROS_DOMAIN_ID=str(domain))
+    log_path = f'/tmp/jo_sim/check_worlds/{name}_robot.log'
+    with open(log_path, 'w') as log:
+        proc = subprocess.Popen(['ros2', 'launch', 'jo_sim', 'launch_sim.launch.py', f'world:={path}',
+                                 'gui:=false', 'follow:=false', 'gz_verbosity:=2'],
+                                env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        try:
+            time.sleep(seconds)
+            alive = proc.poll() is None
+            sensors = probe_sensors(domain, 8.0) if alive else {}
+            pose = robot_pose(env) if alive else None
+            factor = rtf(env) if alive else None
+        finally:
+            if proc.poll() is None:
+                os.killpg(proc.pid, 2)
+                try:
+                    proc.wait(15)
+                except subprocess.TimeoutExpired:
+                    os.killpg(proc.pid, 9)
+    issues = []
+    if not alive:
+        issues.append('launch died')
+    for topic, (_, hz) in SENSOR_TOPICS.items():
+        st = sensors.get(topic)
+        if not st:
+            continue
+        if st['n'] == 0:
+            issues.append(f'{topic}: no messages')
+        elif st['hz'] is not None and st['hz'] < 0.5 * hz:
+            issues.append(f"{topic}: {st['hz']} Hz (expected {hz})")
+    lidar = sensors.get('/velodyne_points', {})
+    if lidar.get('n') and lidar.get('valid', 0) < 100:
+        issues.append(f"lidar: {lidar.get('valid', 0)} valid returns")
+    elif lidar.get('n') and lidar.get('ground', 0) < 50:
+        issues.append(f"lidar sees no ground ({lidar.get('ground', 0)} returns below the sensor: heightmap terrain?)")
+    if alive and pose is None:
+        issues.append('robot not found')
+    elif pose:
+        z, roll, pitch = pose
+        if z < -1.0:
+            issues.append(f'robot fell through the ground (z {z:.2f})')
+        if max(abs(roll), abs(pitch)) > math.radians(30):
+            issues.append(f'robot tipped over (roll {math.degrees(roll):.0f}, pitch {math.degrees(pitch):.0f} deg)')
+    return {'verdict': 'ok' if not issues else 'issues', 'issues': issues, 'rtf': factor,
+            'pose': pose, 'sensors': sensors, 'log': log_path, 'checked': time.strftime('%Y-%m-%d')}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('worlds', nargs='*', help='world names (default: all)')
-    parser.add_argument('--time', type=float, default=25.0, help='seconds per world (default 25)')
+    parser.add_argument('--time', type=float, default=None,
+                        help='warm-up seconds per world (default 25, 45 with --robot)')
+    parser.add_argument('--robot', action='store_true', help='spawn the robot and check its sensors')
+    parser.add_argument('--domain', type=int, default=78, help='ROS domain for --robot (default 78)')
     args = parser.parse_args()
+    seconds = args.time or (45.0 if args.robot else 25.0)
 
     worlds = wt.list_worlds()
     names = args.worlds or sorted(worlds)
@@ -86,10 +222,18 @@ def main():
         if name not in worlds:
             print(f'{name:28s} unknown world')
             continue
-        r = check(name, worlds[name], args.time)
-        status[name] = r
-        rtf_s = f"{r['rtf']:.2f}" if r['rtf'] is not None else '-'
-        print(f"{name:28s} {r['verdict']:9s} rtf {rtf_s:>5s}  errors {r['errors']}", flush=True)
+        if args.robot:
+            r = check_robot(name, worlds[name], seconds, args.domain)
+            status.setdefault(name, {})['robot'] = r
+            rtf_s = f"{r['rtf']:.2f}" if r['rtf'] is not None else '-'
+            print(f"{name:28s} robot {r['verdict']:6s} rtf {rtf_s:>5s}  " + '; '.join(r['issues']), flush=True)
+        else:
+            r = check(name, worlds[name], seconds)
+            if 'robot' in status.get(name, {}):
+                r['robot'] = status[name]['robot']
+            status[name] = r
+            rtf_s = f"{r['rtf']:.2f}" if r['rtf'] is not None else '-'
+            print(f"{name:28s} {r['verdict']:9s} rtf {rtf_s:>5s}  errors {r['errors']}", flush=True)
         os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
         with open(STATUS_FILE, 'w') as f:
             json.dump(status, f, indent=1, sort_keys=True)

@@ -78,7 +78,7 @@ Push the submodules first, so the superproject never points to unpushed commits.
    - RTAB-Map build check (`BUILD_RTABMAP=true`)
    - Testudo
    - D2 ground truth
-   - Phase B leftovers: sensor-topic check in `check_worlds`, per-world sidecar yaml
+   - Phase B leftover: per-world sidecar yaml (the `check_worlds --robot` sensor check is done)
    - Phases C, E, F
    - D3 obstacles and track re-tuning
 
@@ -323,7 +323,13 @@ Findings:
   orange poles, office_small, simple_env_*), sdformat assertion (office_earthquake, office_env_large),
   models not on Fuel (powerplant, DRC models in test_city), invalid inertia (workshop_example, test_zone),
   world-specific texture (yosemite).
-  Still to do: sensor-topic check with the robot spawned.
+  **Done (2026-11-17): `check_worlds --robot`** spawns the robot with every sensor (own Gazebo
+  partition and ROS domain 78) and checks each robot-interface topic's rate from header stamps
+  (sim time), lidar valid and ground returns, robot upright on the ground. Tested: office_cpr,
+  small_city ok; hemicyl flagged (heightmap: 0 lidar returns, no /scan). It found a
+  physics-step issue: 9 Classic worlds use 10 ms, so the 200 Hz IMU ran at 100 Hz. The preprocessor
+  now caps the step at 5 ms and scales `real_time_update_rate` (hemicyl IMU 199.7 Hz).
+  Not yet run on all worlds (each takes ~70 s; run it when the GPU is free).
 
 ## Phase C — Launch ergonomics
 

@@ -85,13 +85,14 @@ teleop                                # keyboard teleop
 #### Worlds
 Drop a `.sdf` / `.world` file (with an optional `models/` folder next to it) in `user_worlds/` and launch it by name: `sim world:=my_world`. Worlds are searched in `user_worlds/`, `jo_sim/worlds/` and the [external collection](https://github.com/leonhartyao/gazebo_models_worlds_collection.git). The world is patched automatically (a copy in `/tmp/jo_sim/worlds`, the original is not touched):
 - the world systems the robot needs (physics, sensors, RGL lidar) and `<spherical_coordinates>` are added when missing;
-- Gazebo Classic worlds: `model://sun` / `model://ground_plane` are written inline, models that are not available locally are downloaded from [Gazebo Fuel](https://app.gazebosim.org/OpenRobotics) on first use (with their dependencies, into `user_worlds/.cache/models`), Ogre material scripts (ignored by Harmonic, models would be untextured) are converted to PBR textures in copies of the models (`user_worlds/.cache/converted_models`), heightmap terrain is rescaled to the heights Classic gave it, `<road>`s are drawn, duplicate model names are made unique. Note: the simulated lidar does not see heightmap terrain (RGL limitation).
+- Gazebo Classic worlds: `model://sun` / `model://ground_plane` are written inline, models that are not available locally are downloaded from [Gazebo Fuel](https://app.gazebosim.org/OpenRobotics) on first use (with their dependencies, into `user_worlds/.cache/models`), Ogre material scripts (ignored by Harmonic, models would be untextured) are converted to PBR textures in copies of the models (`user_worlds/.cache/converted_models`), heightmap terrain is rescaled to the heights Classic gave it, `<road>`s are drawn, duplicate model names are made unique, a physics step above 5 ms is reduced to 5 ms (sensors publish at most once per step: with Classic's common 10 ms the IMU would run at 100 Hz instead of 200). Note: the simulated lidar does not see heightmap terrain (RGL limitation).
 
 Loading is not enough: some Classic worlds run far below real time in Harmonic (e.g. `warehouse`, RTF ≈ 0.003: stacked dynamic boxes on mesh shelves). Test them once with
 ```bash
 check_worlds                 # all worlds, ~30 s each, headless, does not disturb a running sim
 check_worlds warehouse cafe  # only some
-sim_worlds                   # list with the result: ok / slow / fails
+check_worlds --robot office_cpr  # spawn the robot too: sensor rates (sim time), lidar returns, robot upright
+sim_worlds                   # list with the result: ok / slow / fails, and the robot check
 ```
 Results are kept in `user_worlds/.cache/world_status.json`.
 

@@ -519,6 +519,33 @@ def _classic_default_diffuse(world, changes):
         changes.append(f'{n} ambient-only materials given the Classic white diffuse')
 
 
+# The fastest robot sensor is the Xsens IMU at 200 Hz: Gazebo publishes a sensor at most once per
+# physics step, so a coarser step lowers its rate (many Classic worlds use 10 ms: IMU at 100 Hz).
+MAX_STEP_SIZE = 0.005
+
+
+def _cap_step_size(world, changes):
+    """Cap <physics><max_step_size> so every sensor keeps the robot's rate; real_time_update_rate
+    is scaled with it so the target real-time factor does not change."""
+    for physics in world.findall('physics'):
+        step = physics.find('max_step_size')
+        try:
+            value = float(step.text)
+        except (AttributeError, TypeError, ValueError):
+            continue  # Harmonic default (1 ms)
+        if value <= MAX_STEP_SIZE:
+            continue
+        step.text = str(MAX_STEP_SIZE)
+        rate = physics.find('real_time_update_rate')
+        try:
+            if rate is not None and float(rate.text) > 0:
+                rate.text = str(float(rate.text) * value / MAX_STEP_SIZE)
+        except (TypeError, ValueError):
+            pass
+        changes.append(f'physics step {value * 1000:g} ms -> {MAX_STEP_SIZE * 1000:g} ms '
+                       '(sensors publish at most once per step: IMU at 200 Hz)')
+
+
 def _unique_names(world, changes):
     seen = {}
     for elem in world:
@@ -607,6 +634,7 @@ def prepare_world(world_path, latitude, longitude, elevation=0.0, out_dir=OUT_DI
         _convert_roads(world, changes)
         _classic_default_diffuse(world, changes)
     _unique_names(world, changes)
+    _cap_step_size(world, changes)
 
     os.makedirs(out_dir, exist_ok=True)
     out = os.path.join(out_dir, os.path.splitext(os.path.basename(world_path))[0] + '.sdf')

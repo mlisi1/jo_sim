@@ -28,9 +28,12 @@ for d in dirs:
             s = status.get(n)
             if s:
                 rtf = f"rtf {s['rtf']:.2f}" if s.get('rtf') is not None else ''
-                print(f"  {n:28s} {s['verdict']:9s} {rtf}")
+                r = s.get('robot')
+                robot = f"robot {r['verdict']}" + (f" ({'; '.join(r['issues'])})" if r['issues'] else '') if r else ''
+                print(f"  {n:28s} {s.get('verdict', '-'):9s} {rtf:9s} {robot}".rstrip())
             else:
                 print(f'  {n}')
 print(f'\n{len(worlds)} worlds. Launch with: sim world:=<name>')
 if not status:
-    print('Run `ros2 run jo_sim check_worlds` to test which ones work in Gazebo Harmonic.')
+    print('Run `ros2 run jo_sim check_worlds` to test which ones work in Gazebo Harmonic '
+          '(`--robot` also checks the sensors with the robot spawned).')
