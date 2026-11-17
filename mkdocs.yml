@@ -1,0 +1,169 @@
+site_name: jo_sim
+site_description: The simulator of Jo, a tracked field robot. Same ROS 2 interface as the real robot, so the real stack runs on it unchanged.
+site_url: https://mlisi1.github.io/jo_sim/
+repo_url: https://github.com/mlisi1/jo_sim
+repo_name: mlisi1/jo_sim
+edit_uri: edit/dev/docs/
+copyright: Copyright &copy; 2026 mlisi1
+
+theme:
+  name: material
+  language: en
+  icon:
+    logo: material/robot-industrial
+    repo: fontawesome/brands/github
+  favicon: assets/images/favicon.svg
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    # Dark first: "sensor" cyan on deep navy, amber accent
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.path
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - content.action.edit
+
+extra_css:
+  - assets/css/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/mlisi1/jo_sim
+      name: jo_sim on GitHub
+
+plugins:
+  - search
+  - llmstxt:
+      markdown_description: >
+        jo_sim is the Gazebo Harmonic / ROS 2 Jazzy simulator of Jo, a tracked robot. It exposes the
+        real robot's ROS interface, so the navigation stack (jo_navigation: GLIM, EKF, Nav2) runs on
+        it unchanged. Read "For agents" first if you are an agent changing the simulator.
+      full_output: llms-full.txt
+      sections:
+        Start here:
+          - index.md
+          - agents.md
+        Getting started:
+          - getting-started/*.md
+        User guide:
+          - user-guide/*.md
+        Developer guide:
+          - developer/*.md
+        Reference:
+          - reference/*.md
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.snippets:
+      auto_append:
+        - docs/includes/abbreviations.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+exclude_docs: |
+  /includes/
+  /requirements.txt
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - getting-started/index.md
+      - Install: getting-started/install.md
+      - First run: getting-started/first-run.md
+      - Navigation in the sim: getting-started/navigation.md
+      - Updating: getting-started/updating.md
+  - User guide:
+      - user-guide/index.md
+      - The ./jo wrapper: user-guide/jo-cli.md
+      - Launch arguments: user-guide/launch-arguments.md
+      - Worlds: user-guide/worlds.md
+      - Sensors: user-guide/sensors.md
+      - Simulation control: user-guide/sim-control.md
+      - Ground truth: user-guide/ground-truth.md
+      - GLIM maps: user-guide/glim-maps.md
+      - Two simulations at once: user-guide/multiple-simulations.md
+      - DendROS and Testudo: user-guide/dendros-testudo.md
+      - Performance: user-guide/performance.md
+      - Troubleshooting: user-guide/troubleshooting.md
+  - Developer guide:
+      - developer/index.md
+      - Architecture: developer/architecture.md
+      - Invariants: developer/invariants.md
+      - Repositories: developer/repositories.md
+      - Launch files: developer/launch-files.md
+      - World preprocessor: developer/world-preprocessor.md
+      - Bridges: developer/bridges.md
+      - Driver emulation nodes: developer/nodes.md
+      - Docker image: developer/docker.md
+      - How-to recipes: developer/how-to.md
+      - Testing: developer/testing.md
+      - Sim vs robot configs: developer/sim-vs-robot.md
+      - Design decisions: developer/decisions.md
+      - Contributing: developer/contributing.md
+      - Roadmap: developer/roadmap.md
+  - For agents: agents.md
+  - Reference:
+      - reference/index.md
+      - Topics and frames: reference/topics-frames.md
+      - Commands and aliases: reference/commands.md
+      - Configuration files: reference/configuration.md
+      - Glossary: reference/glossary.md

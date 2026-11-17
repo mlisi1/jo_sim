@@ -76,12 +76,12 @@ points to unpushed commits.
    - The neutral keys went into `glim_config_bunker`. They are GLIM defaults made explicit:
      `config_logging`, `validate_imu`, `enable_cropbox_filter`, `ang_scale`, `intensity_field`.
      `ring_field: ring` makes GLIM read the ring field, which nothing in GLIM uses yet.
-   - **`compute_covs` is held back**: it changes the robot. GLIM's odometry covariance goes from
-     glim_ros's fixed fallback (1e-2 m², 1e-3 rad²) to GLIM's marginals (~2e-6 m² on the GPU on the
-     testudo bag). That is about 5000x more weight for GLIM in the EKF's `odom0`, plus some CPU per
-     frame. **Waiting for Michele's call**, perhaps together with the EKF tuning.
-   - Robot and sim configs differ only in the sim-specific values (IMU noise, `global_shutter_lidar`,
-     `downsample_resolution`, `image_topic`), plus `compute_covs`.
+   - **`compute_covs: true` too** (Michele approved, jo_navigation `b9690aa`). GLIM's odometry
+     covariance goes from glim_ros's fixed fallback (1e-2 m², 1e-3 rad²) to GLIM's marginals
+     (~2e-6 m² on the GPU on the testudo bag): about 5000x more weight for GLIM in the EKF's `odom0`.
+     Watch for it in the EKF tuning.
+   - Robot and sim configs now differ only in the sim-specific values (IMU noise,
+     `global_shutter_lidar`, `downsample_resolution`, `image_topic`).
    - **GLIM viewers**, robot and sim: GLIM's metric point size again (`point_size_metric: true`,
      `point_size: 0.025` m) for `standard_viewer` and `interactive_viewer` (`offline_viewer`).
      They were screen-space sizes 0.01 and 10.0, from `31a3c4d`. GUI only. Not yet checked visually:
@@ -588,7 +588,7 @@ Scripts in `docs/gen/` rebuild these tables, and CI fails if they are out of dat
 - `./jo help`.
 
 ### Steps
-- **G1:** skeleton, theme, CI deploy, `AGENTS.md`. Move the README content in; the README keeps a
+- **G1: done (2026-11-17).** Skeleton, theme, CI deploy, `AGENTS.md`. Move the README content in; the README keeps a
   quick start and the link.
 - **G2:** the user pages.
 - **G3:** the developer and reference pages, plus the generators.
@@ -602,3 +602,20 @@ Scripts in `docs/gen/` rebuild these tables, and CI fails if they are out of dat
 - scope: jo_sim only, with jo_description and jo_navigation covered where the sim touches them
   (proposed), or separate sites;
 - who records the videos.
+
+### G1 status (2026-11-17)
+- **Site:**
+  - `docs/` (39 pages), `mkdocs.yml`, `.github/workflows/docs.yml`.
+  - Built with `mkdocs build --strict`, then deployed with `mkdocs gh-deploy` to the `gh-pages`
+    branch on every push to `dev` that touches the docs.
+  - Pages must be set once in the repo settings: Pages → Deploy from a branch → `gh-pages`.
+- **Theme:** navy base, "sensor" cyan (#06b6d4), amber accent (#f59e0b). Dark scheme first. Hero on
+  the home page, grid cards, media placeholders (`<div class="media-ph" data-kind=...>`; list them
+  with `grep -rn media-ph docs`), and `!!! planned` boxes for content still to write.
+- **For agents:** `llms.txt` and `llms-full.txt` (mkdocs-llmstxt), and `AGENTS.md` at the repo root.
+- **The README** keeps a quick start and links the site.
+- **Material for MkDocs reaches end of life on 2027-05-05** (it prints this at build). Its successor,
+  Zensical, reads the same `mkdocs.yml`: migrate before then.
+- **Checking the look without the GPU:** headless Chrome with `--disable-gpu`. For the dark scheme,
+  first set the localStorage key `/.__palette` to scheme `slate` in the same profile.
+- **Open:** the deploy branch (`dev` for now) and who records the videos.

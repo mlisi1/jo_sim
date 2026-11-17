@@ -7,3 +7,7 @@ user_worlds/*
 !user_worlds/.gitkeep
 __pycache__/
 *.pyc
+
+# docs build
+.venv/
+site/
