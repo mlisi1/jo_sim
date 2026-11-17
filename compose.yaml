@@ -7,6 +7,7 @@ services:
       args:
         BUILD_RTABMAP: ${BUILD_RTABMAP:-false}
         GLIM_ROS_REF: ${GLIM_ROS_REF:-dev}
+        GLIM_ROS_COMMIT: ${GLIM_ROS_COMMIT:-}
         DENDROS_VERSION: ${DENDROS_VERSION:-latest}
         BUILD_JOBS: ${BUILD_JOBS:-8}
         CUDA_ARCHS: ${CUDA_ARCHS:-all-major}
@@ -31,6 +32,7 @@ services:
       - ./jo_description:/home/ros/src/jo_description
       - ./jo_navigation:/home/ros/src/jo_navigation
       - ./jo_sim:/home/ros/src/jo_sim
+      - ./testudo:/home/ros/src/testudo
       - ./docker/utils:/home/ros/utils
       - ./user_worlds:/home/ros/user_worlds
       - ./saved_maps:/saved_maps

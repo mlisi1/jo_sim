@@ -9,3 +9,7 @@
 [submodule "jo_sim/worlds/external"]
 	path = jo_sim/worlds/external
 	url = https://github.com/leonhartyao/gazebo_models_worlds_collection.git
+[submodule "testudo"]
+	path = testudo
+	url = https://github.com/mlisi1/testudo.git
+	branch = main

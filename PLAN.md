@@ -286,12 +286,16 @@ Findings:
   Global settings: `docker/utils/dendROS/defaults.yaml` (copy of Michele's host `~/.config/dendROS/defaults.yaml`),
   symlinked into `~/.config/dendROS/` by `utilities.sh`. `node_colors.yaml` is runtime state written by each
   launch (not a setting); the group colors are in the package `dendROS.yaml`, matching jo-zotac's.
-- **Testudo** (topic health): submodule following `main` (no `dev` branch / tags yet), built in
-  the workspace (`textual` via pip). **One Testudo config shared by robot and sim** (in
-  jo_navigation or jo_description, both mounted by both containers) declaring the robot's topics,
-  rates, frame ids, TF chain, Nav2 actions and GLIM `/diagnostics`. Used as the normal health view
-  during sim sessions; a sim that is not green under the robot's config has drifted from the
-  robot interface.
+- **Testudo** (topic health): submodule `testudo` following `main`, mounted and built by the
+  entrypoint (`textual` via `pip --user` in the image). Config **owned by jo_sim**:
+  `jo_sim/config/testudo.yaml` (Michele: the robot's belongs to jo-zotac). Aliases `health`,
+  `health_check`. **Status (2026-11-17): integrated but not reliable yet, parked** (Michele: "not
+  that important"). Testudo-side problems are written up in `~/testudo/JO_SIM_NOTES.md` for the
+  Testudo agent: invalid package.xml (`--` in comments, so the aliases call
+  `~/install/testudo/lib/testudo/testudo` instead of `ros2 run`), no use_sim_time, content checks
+  failing with the full stack (~128 topics), TF watch missing map->odom. jo_sim-side leftover:
+  declare the Nav2 action feedback / selector topics as `event_driven` (most of the ERRORs while
+  idle).
 
 ## Phase B — Drop-in worlds
 

@@ -1,0 +1,118 @@
+# Testudo (topic health) config for the simulator: the robot interface jo_sim must expose
+# (PLAN.md "Reference: real robot interface"). A sim that is not green here has drifted from the
+# robot. The robot's own config belongs to jo-zotac.
+#
+#   health                         # alias in docker/utils/utilities.sh: live TUI
+#   health_check                   # one-shot report
+#
+# Topics not declared here still get liveness and rate checks. Images and 3D point clouds are
+# presence-only unless declared (a subscription costs bandwidth), so only the ones the stack
+# consumes are declared.
+severity_mode: worst
+publish:
+  rate_hz: 5.0
+  per_plugin: true
+  namespace: /testudo
+  topic: /diagnostics
+
+topics:
+  # ── Sensors (rates as on the robot) ──
+  sensor_msgs/msg/PointCloud2:
+    - name: /velodyne_points
+      weight: 3
+      thresholds:
+        rate_hz: {green: 9.0, orange: 5.0}
+  sensor_msgs/msg/LaserScan:
+    - name: /scan
+      weight: 1
+      thresholds:
+        rate_hz: {green: 9.0, orange: 5.0}
+        # The VLP-16 ring used for /scan sees open sky outdoors: many out-of-range readings are normal
+        invalid_ratio: {green: 0.5, orange: 0.8}
+  sensor_msgs/msg/Imu:
+    - name: /imu/data
+      weight: 3
+      thresholds:
+        rate_hz: {green: 180.0, orange: 100.0}
+  sensor_msgs/msg/NavSatFix:
+    - name: /gnss
+      weight: 2
+      thresholds:
+        rate_hz: {green: 9.0, orange: 5.0}
+        # Sim GNSS noise is RTK-like only if sim_noise is off: accept consumer-grade sigmas
+        position_covariance: {green: 1.0, orange: 9.0}
+  sensor_msgs/msg/Image:
+    - name: /front_camera/camera/color/image_raw
+      weight: 1
+      thresholds:
+        rate_hz: {green: 25.0, orange: 10.0}
+    - name: /back_camera/camera/color/image_raw
+      weight: 1
+      thresholds:
+        rate_hz: {green: 25.0, orange: 10.0}
+
+  # ── Localization (GLIM + EKF) ──
+  nav_msgs/msg/Odometry:
+    - name: /glim_ros/odometry/local
+      weight: 3
+    - name: /odometry/filtered
+      weight: 3
+      related_topics:
+        cmd_vel: /cmd_vel
+  diagnostic_msgs/msg/DiagnosticArray:
+    - name: /diagnostics   # GLIM's diagnostic_updater, 1 Hz
+      weight: 1
+      thresholds:
+        rate_hz: {green: 0.8, orange: 0.3}
+
+  # ── Navigation ──
+  nav_msgs/msg/OccupancyGrid:
+    - name: /local_costmap/costmap
+      weight: 2
+      thresholds:
+        rate_hz: {green: 1.5, orange: 0.5}   # publish_frequency 2.0
+    - name: /global_costmap/costmap
+      weight: 1
+      thresholds:
+        rate_hz: {green: 0.7, orange: 0.3}   # publish_frequency 1.0
+  nav2_msgs/msg/BehaviorTreeLog:
+    - name: /behavior_tree_log
+      weight: 1
+  geometry_msgs/msg/Twist:
+    - name: /cmd_vel
+      event_driven: true
+    - name: /cmd_vel_nav
+      event_driven: true
+
+actions:
+  - name: navigate_to_pose
+    action_type: nav2_msgs/action/NavigateToPose
+    weight: 3
+    related_topics:
+      feedback: /navigate_to_pose/_action/feedback
+  - name: follow_waypoints
+    action_type: nav2_msgs/action/FollowWaypoints
+    weight: 2
+  - name: spin
+    action_type: nav2_msgs/action/Spin
+    weight: 1
+  - name: backup
+    action_type: nav2_msgs/action/BackUp
+    weight: 1
+
+tf:
+  # Localization chain (EKF owns odom->base_link, GLIM or navsat map->odom)
+  - {parent: map, child: odom}
+  - {parent: odom, child: base_link}
+  # Sensor frames the stack uses (static, from robot_state_publisher / RealSense TF emulation)
+  - {parent: base_link, child: velodyne}
+  - {parent: base_link, child: imu_link}
+  - {parent: base_link, child: front_camera_color_optical_frame}
+  - {parent: base_link, child: front_camera_depth_optical_frame}
+  - {parent: base_link, child: back_camera_color_optical_frame}
+
+node_profiling:
+  enabled: true
+  # Gazebo and GLIM (GPU) are heavy by design
+  cpu_percent: {green: 300, orange: 600}
+  memory_mb: {green: 2000, orange: 6000}

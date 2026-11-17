@@ -28,6 +28,11 @@ alias full_sensors='ros2 launch jo_sim sim_bringup.launch.py front_cam:=true bac
 alias full_navigation='ros2 launch jo_sim sim_bringup.launch.py front_cam:=true localization:=true navigation:=true rviz:=true back_cam:=true'
 alias full_gps_navigation='ros2 launch jo_sim sim_bringup.launch.py front_cam:=true gnss:=true localization_gps:=true navigation_gps:=true rviz:=true back_cam:=true'
 
+# Topic health (Testudo) against the robot interface: jo_sim/config/testudo.yaml (mounted source, so
+# rules added from the TUI's Options screen persist in the repo)
+alias health='~/install/testudo/lib/testudo/testudo watch -c /home/ros/src/jo_sim/config/testudo.yaml'
+alias health_check='~/install/testudo/lib/testudo/testudo check -c /home/ros/src/jo_sim/config/testudo.yaml --duration 10'
+
 alias teleop='ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p use_sim_time:=true'
 alias offline_viewer='ros2 run glim_ros offline_viewer'
 alias save_map='ros2 service call /glim_ros/save_map std_srvs/srv/Trigger'

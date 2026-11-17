@@ -192,6 +192,22 @@ RUN TAG="${DENDROS_VERSION}" \
  && sudo rm -rf /tmp/DendROS
 
 
+# ── Testudo (topic health) dependencies; the package is the mounted ./testudo submodule ──
+RUN pip install --user --break-system-packages textual
+
+
+# ── Optional glim_ros2 commit on top of the cached workspace layer ─────────
+# GLIM_ROS_REF above is cached as a branch name, so a new commit on it is not picked up. Setting
+# GLIM_ROS_COMMIT checks it out and rebuilds only glim_ros (minutes), not GLIM and gtsam_points.
+# Declared here, not at the top, so changing it does not invalidate the earlier layers.
+ARG GLIM_ROS_COMMIT=
+RUN if [ -n "${GLIM_ROS_COMMIT}" ]; then \
+      cd src/glim_ros2 && git fetch -q --depth 1 origin "${GLIM_ROS_COMMIT}" && git checkout -q FETCH_HEAD \
+   && cd ~ && source /opt/ros/${DISTRO}/setup.bash \
+   && MAKEFLAGS="-j${BUILD_JOBS}" colcon build --packages-select glim_ros --cmake-args -DCMAKE_BUILD_TYPE=Release ; \
+    else echo "glim_ros2 at GLIM_ROS_REF=${GLIM_ROS_REF}" ; fi
+
+
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN sudo chmod +x /entrypoint.sh
 
