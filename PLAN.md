@@ -598,7 +598,7 @@ Scripts in `docs/gen/` rebuild these tables, and CI fails if they are out of dat
   - Michele reads it as a new user.
 
 ### Open points for Michele
-- the deploy branch (`main` needs a merge from `dev`; or deploy from `dev`);
+- the deploy branch: **`main`** (Michele, 2026-11-17);
 - scope: jo_sim only, with jo_description and jo_navigation covered where the sim touches them
   (proposed), or separate sites;
 - who records the videos.
@@ -606,9 +606,13 @@ Scripts in `docs/gen/` rebuild these tables, and CI fails if they are out of dat
 ### G1 status (2026-11-17)
 - **Site:**
   - `docs/` (39 pages), `mkdocs.yml`, `.github/workflows/docs.yml`.
-  - Built with `mkdocs build --strict`, then deployed with `mkdocs gh-deploy` to the `gh-pages`
-    branch on every push to `dev` that touches the docs.
-  - Pages must be set once in the repo settings: Pages → Deploy from a branch → `gh-pages`.
+  - Built with `mkdocs build --strict` on pull requests and on pushes to `dev` and `main`.
+  - **Deployed only from `main`** (Michele), through the Pages artifact actions
+    (`upload-pages-artifact`, `deploy-pages`). There are no commits and no `gh-pages` branch:
+    `mkdocs gh-deploy` committed as `github-actions[bot]`, who then showed up among the
+    contributors. The first deploy was replaced the same day and its `gh-pages` branch deleted.
+  - Pages must be set once in the repo settings: Pages → Source: **GitHub Actions**.
+  - The site is published only after `dev` is merged into `main`.
 - **Theme:** navy base, "sensor" cyan (#06b6d4), amber accent (#f59e0b). Dark scheme first. Hero on
   the home page, grid cards, media placeholders (`<div class="media-ph" data-kind=...>`; list them
   with `grep -rn media-ph docs`), and `!!! planned` boxes for content still to write.
@@ -618,4 +622,4 @@ Scripts in `docs/gen/` rebuild these tables, and CI fails if they are out of dat
   Zensical, reads the same `mkdocs.yml`: migrate before then.
 - **Checking the look without the GPU:** headless Chrome with `--disable-gpu`. For the dark scheme,
   first set the localStorage key `/.__palette` to scheme `slate` in the same profile.
-- **Open:** the deploy branch (`dev` for now) and who records the videos.
+- **Open:** who records the videos.

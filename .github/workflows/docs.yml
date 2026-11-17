@@ -1,25 +1,30 @@
 name: Docs
 
-# Builds the documentation site on every push and pull request that touches it (strict: broken
-# links and missing pages fail), and deploys it to GitHub Pages from the dev branch.
+# Builds the documentation site (strict: broken links and missing pages fail) on pull requests and
+# on pushes to dev, and deploys it to GitHub Pages on pushes to main.
+# The deploy uses the Pages artifact actions: no commits, no gh-pages branch.
+# Repo setting needed once: Settings -> Pages -> Source: GitHub Actions.
 on:
   push:
-    branches: [dev]
+    branches: [main, dev]
     paths: ["docs/**", "mkdocs.yml", ".github/workflows/docs.yml"]
   pull_request:
     paths: ["docs/**", "mkdocs.yml", ".github/workflows/docs.yml"]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  docs:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           submodules: false
 
       - uses: actions/setup-python@v5
@@ -30,11 +35,26 @@ jobs:
         run: pip install -r docs/requirements.txt
 
       - name: Build (strict)
+        env:
+          NO_MKDOCS_2_WARNING: "1"
         run: mkdocs build --strict
 
-      - name: Deploy to GitHub Pages
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/dev'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          mkdocs gh-deploy --force
+      - name: Upload the site
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
