@@ -13,83 +13,108 @@ Order: **A → DendROS/Testudo → B → C → E → F → D**.
 
 ---
 
-## Where we left off (2026-11-16, evening)
+## Where we left off (2026-11-17)
 
-Michele confirmed that `full_navigation` (GLIM) and `full_gps_navigation` both work in the sim:
-costmaps, path, footprint, clouds, GPS, and the Gazebo camera following the robot.
+`full_navigation` (GLIM) and `full_gps_navigation` work in the sim (Michele, 2026-11-16).
+This session is about **updating the simulator**: Michele said navigation/EKF tuning comes later.
 
 **Done:**
 - Phase A
-- most of Phase B (worlds)
+- Phase B, completed this session (see "Phase B" below):
+  - `check_worlds --robot` and the physics-step cap: `500a0ae`
+  - world sidecar yaml: `66908a4`
 - Velodyne emulation (4c)
-- the session fixes listed in "Phase A follow-ups" below
-- GLIM startup investigation and GLIM config alignment (this session, see "GLIM startup" below):
-  jo_sim `5f47b80`, jo_navigation `8c027f8`, `b198fb0`
+- GLIM startup investigation (2026-11-16, see "GLIM startup" below)
+- **GLIM keys in the sim config** (jo_navigation `5775a10`, jo_sim `584d132`). Details and the EKF
+  findings are in "GLIM keys and EKF (2026-11-17)" below.
+- **DendROS** (`b10329f`): global settings copied from Michele's host, image stays at v1.1.0. See "DendROS and Testudo".
+- **Testudo** (`c99519c`): integrated but parked. See "DendROS and Testudo".
+- **Image** (`c99519c`): glim_ros2 is pinned through the `GLIM_ROS_COMMIT` build arg, currently `da3fae1`.
 
-**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 15, jo_navigation 7, jo_description 1.
+**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 23, jo_navigation 8, jo_description 1.
 Push the submodules first, so the superproject never points to unpushed commits.
 
 **Constraints:**
 - **jo_description:** joints and origins are the **real robot's TFs** (Michele's `88a2aac`).
   Never change them; sim-only changes go in `<gazebo>` tags.
-- **jo-zotac Docker fix:** postponed by Michele.
-- **The robot runs GLIM on the GPU only.** CPU-mode results matter little (Michele).
-- **Shared machine:** Spirula (`./build_vulkan/spirula`) also uses the GPU, and its builds use a lot of
-  RAM. Check `free -h` and `nvidia-smi` before a test batch; the host got close to OOM twice this session.
+- **Scope: simulator only for now.** Record navigation findings (`localization*.yaml`, Nav2) as
+  deferred; don't tune them.
+- **The robot config `glim_config_bunker` is untouched.** New GLIM keys go in the sim config first;
+  Michele evaluates before anything reaches the robot.
+- **jo-zotac Docker fix:** postponed by Michele. Don't touch jo-zotac: another session has
+  uncommitted changes there. The robot's Testudo config will belong to jo-zotac.
+- **The robot runs GLIM on the GPU only.** CPU-mode results matter little.
+- **Shared machine:**
+  - Spirula (`./build_vulkan/spirula`) uses the GPU, and its builds use a lot of RAM and CPU. On
+    2026-11-17 its shader compiles dropped office_cpr to RTF 0.06.
+  - Check `uptime`, `free -h` and `nvidia-smi` before a test batch.
+  - The glim_ros2 session (`~/glim_ros2`) coordinates GPU slots through SendMessage.
 
 ### Next session checklist
-1. **Missing GLIM keys: done in the sim only** (2026-11-17, jo_navigation `5775a10`, jo_sim `584d132`).
-   Michele: "first in the sim, then we'll evaluate"; `glim_config_bunker` (robot) is untouched.
-   - `glim_config_bunker_sim`: `compute_covs: true`, `ring_field: ring`, `intensity_field`,
-     `image_topic: ""`, and explicit defaults `ang_scale`, `config_logging`, `enable_cropbox_filter`,
-     `validate_imu`. `submap_target_num_points` was already set in the GPU/passthrough sub_mapping files.
-   - `glim_anchor_frame` launch argument (`glim_common.py`): `imu` by default (robot unchanged), jo_sim
-     passes `base`. Verified: GLIM odometry and `odometry/filtered` start at 0 (sub-mm).
-   - **compute_covs A/B in the sim** (office_cpr, 3+3 runs, straight / 180° turn / straight): EKF end
-     error at rest 1-7 mm with, 4-10 mm without; no degradation. But sim GLIM variances are ~1e-7 m²
-     (near-noiseless sim) vs 3.3e-4 on the testudo bag: **the sim cannot validate the robot odom0
-     tuning**; that needs the bag or the robot.
-   - **Found: EKF velocity is poor in both configs** (not caused by compute_covs). `odom0` fuses only
-     GLIM x, y, yaw, so EKF `vx` comes from IMU accel + position corrections: 0.11-0.13 m/s in the
-     first second of a 0.5 m/s drive (GLIM 0.41-0.45), then 0.57 steady (GLIM 0.483, sd 0.003).
-     The EKF output saw-tooths: jumps of 11-28 mm at each GLIM update. Candidate fix, **deferred**
-     (Michele: navigation tuning comes later, the current sessions are about the simulator):
-     fuse GLIM `vx, vy, vyaw` in `odom0` (GLIM's twist is in base_link with its covariance); test it
-     with a variant yaml through `localization_params:=`. Probe scripts: `probe_ekf.py`,
-     `analyze_ekf.py`, `jumps_ekf.py`, `run_ekf.sh` in the container's `/tmp/scratch`, data in
-     `/tmp/glimrep/ekf` (lost when the container is recreated).
-   - Later, with Michele: whether to apply the keys to the robot config `glim_config_bunker`.
-   - **EKF on real data (glim_ros2 session, 2026-11-17, testudo bag, robot GPU config + the keys):**
-     GLIM GPU 8/8 clean cold starts, variances ~2e-6 m², fork TF invariants hold. But
-     `/odometry/filtered` is a median 1-2 m and up to 5-18 m off GLIM, already while standing still.
-     Cause in `localization*.yaml` (both files): `imu0_config` fuses the IMU **absolute yaw** (the
-     comment says it doesn't); the Xsens yaw is absolute (0 = north) while GLIM's starts at 0, so two
-     conflicting yaws. The vx/vy row is ignored (Imu has no velocity), no accelerations are fused.
-     **Affects the robot.** Deferred with the rest of the navigation tuning.
-     **Sim gap:** the sim hides it at spawn yaw 0 (sim IMU yaw = GLIM yaw). Test with a non-zero
-     `yaw:=` and check that the sim IMU orientation follows the Xsens convention (absolute heading).
-2. **GPU check on the real data (glim_ros2 session, waiting for Michele's go-ahead):** the robot's
-   `glim_config_bunker` with GPU GLIM on the testudo bag, in a throwaway container from the jo-sim image.
-   It needs several GiB of RAM and the GPU: run it only when Spirula is not building.
-3. **Push when asked:** jo_description, then jo_navigation, then jo_sim.
+1. **Phase C (launch ergonomics)**, next in the plan's order. Pending Michele's choice between
+   Phase C and D2 ground truth.
+   - Args `paused`, `rtf`, `namespace`, `robot_name`. `x y z yaw`, `gui`, `rviz` and `spawn` exist already.
+   - Host wrapper: `./jo sim --world warehouse --nav gps` around compose + launch.
+2. **D2 ground truth** (`/sim/ground_truth/odom`), the alternative. It is small, and it would
+   replace the slow `gz model -p` polling in the probes.
+3. **`check_worlds --robot` over all 51 worlds**, when the GPU is free: `check_worlds --robot`
+   inside the container, ~70 s per world. Then look at `sim_worlds`.
+4. **Phases E, F, then D3 and track re-tuning.** Also the RTAB-Map build check (`BUILD_RTABMAP=true`,
+   RAM-heavy: only when Spirula is not building).
+5. **Push when asked:** jo_description, then jo_navigation, then jo_sim.
    - Remove the branch `backup/dev-before-rebase` in jo_description once the push is fine.
    - The robot `T_lidar_imu` change (jo_navigation `8c027f8`) is untested on the robot.
-4. **Remaining plan items:**
-   - RTAB-Map build check (`BUILD_RTABMAP=true`)
-   - Testudo
-   - D2 ground truth
-   - Phase B: done (2026-11-17: `check_worlds --robot`, sidecar yaml with spawn/datum/description;
-     missions and obstacles in the sidecar come with E and D3)
-   - Phases C, E, F
-   - D3 obstacles and track re-tuning
+6. **Deferred, for Michele (not simulator work):**
+   - the EKF findings below. They **affect the robot**: `imu0` fuses an absolute yaw.
+   - whether the GLIM keys go into the robot config;
+   - GLIM viewer `interactive_viewer.point_size: 10.0` (Michele's `31a3c4d`; GLIM's default is
+     0.025). The glim_ros2 session reports it makes the GLIM viewer and offline_viewer unreadable.
+     It is GUI only.
+
+**How to run (inside `docker exec -it jo_sim-jo-sim-1 bash`):**
+- Tests always use `GZ_PARTITION=jo_sim_test ROS_DOMAIN_ID=77`, never the user's domain 0 or
+  partition `jo_sim`. `check_worlds --robot` uses its own partition and domain 78.
+- Stop launches by process group (`setsid ros2 launch ... &`, then `kill -INT -$PG`).
 
 **Container state** (`jo_sim-jo-sim-1`, image rebuilt and container recreated 2026-11-17):
-- glim_ros2 is pinned in the image with the `GLIM_ROS_COMMIT` build arg (`.env`, currently `dev`
-  `da3fae1`): a late layer checks it out and rebuilds only glim_ros. To follow a new glim_ros2
-  commit, set it in `.env` and run `docker compose build` (about a minute), then recreate the container.
-- Test leftovers: `/tmp/scratch` (probe scripts) and `/tmp/glimrep` (logs) in the container, lost
-  when it is recreated. The 2026-11-16 startup logs and the EKF probe data from before the
-  recreation are gone (the EKF probe data was copied out for the session only).
+- **glim_ros2:** pinned with `GLIM_ROS_COMMIT` in `.env` (`dev` `da3fae1`). A late layer checks it
+  out and rebuilds only glim_ros. To follow a newer commit, set it in `.env`, run
+  `docker compose build` (about a minute), then `docker compose up -d`. glim_ros2 `dev` has newer
+  commits (`9ea1bff`, `3838f5c`, `af79c6c`), none of them changing `glim_rosnode`.
+- **Left running** after the session; no background jobs or test launches.
+- **Test leftovers** in the container, lost when it is recreated:
+  - `/tmp/scratch`: probe scripts `run_health*.sh`, `testudo_light.yaml`;
+  - `/tmp/glimrep`: logs.
+
+### GLIM keys and EKF (2026-11-17)
+- **Sim config `glim_config_bunker_sim`** (jo_navigation `5775a10`). Michele: "first in the sim,
+  then we'll evaluate".
+  - New: `compute_covs: true`, `ring_field: ring`, `intensity_field`, `image_topic: ""`.
+  - Explicit defaults: `ang_scale`, `config_logging`, `enable_cropbox_filter`, `validate_imu`.
+  - `submap_target_num_points` was already set in the GPU/passthrough sub_mapping files.
+- **`glim_anchor_frame` launch argument** (`glim_common.py`): `imu` by default, so the robot is
+  unchanged; jo_sim passes `base`. Verified: GLIM odometry and `odometry/filtered` start at 0 (sub-mm).
+- **`global_shutter_lidar: true` stays in the sim config.** The RGL sweep is instantaneous, so
+  per-point times are 0. The robot config keeps `false`.
+- **compute_covs A/B in the sim** (office_cpr, 3+3 runs, straight / 180° turn / straight):
+  - EKF end error at rest: 1-7 mm with compute_covs, 4-10 mm without. No degradation.
+  - But sim GLIM variances are ~1e-7 m² (near-noiseless sim), vs 3.3e-4 on CPU and ~2e-6 on GPU on
+    the testudo bag. **The sim cannot validate the robot's `odom0` tuning.**
+- **EKF velocity is poor in both configs** (deferred, not caused by compute_covs):
+  - `odom0` fuses only GLIM x, y and yaw, so EKF `vx` lags: 0.11-0.13 m/s in the first second of a
+    0.5 m/s drive (GLIM 0.41-0.45), then 0.57 at steady speed (GLIM 0.483).
+  - Result: 11-28 mm jumps at each GLIM update.
+  - Candidate fix: fuse GLIM `vx, vy, vyaw`. GLIM's twist is in base_link, with its covariance. Test
+    it with a variant yaml through `localization_params:=`.
+- **EKF on real data** (glim_ros2 session, testudo bag, robot GPU config plus the new keys):
+  - GLIM: 8/8 clean cold starts, fork TF invariants hold.
+  - `/odometry/filtered` is a median 1-2 m and up to 5-18 m off GLIM, even while the robot stands still.
+  - Cause, in both `localization*.yaml` files: `imu0_config` fuses the IMU's **absolute yaw**,
+    although the comment says it doesn't. The Xsens yaw is absolute (0 = north) while GLIM's starts
+    at 0. The vx/vy row does nothing, and no accelerations are fused.
+  - **Affects the robot.** Deferred.
+  - **Sim gap:** at spawn yaw 0 the sim IMU yaw equals GLIM's, which hides this. Check with a
+    non-zero `yaw:=`, and check that the sim IMU follows the Xsens absolute-heading convention.
 
 ### GLIM startup (2026-11-16)
 - **The "1 start in 4" divergence did not reproduce:** 34/34 headless starts clean in office_cpr,

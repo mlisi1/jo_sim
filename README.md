@@ -57,7 +57,7 @@ docker compose exec jo-sim bash
 ```
 
 ### Configuration
-`.env` holds the build options (`BUILD_RTABMAP`, `GLIM_ROS_REF`, `DENDROS_VERSION`, `BUILD_JOBS`, `CUDA_ARCHS`) and runtime settings. RTAB-Map (visual odometry / visual SLAM) is built from source only with `BUILD_RTABMAP=true`; without it the localization stack runs without visual odometry.
+`.env` holds the build options (`BUILD_RTABMAP`, `GLIM_ROS_REF`, `GLIM_ROS_COMMIT`, `DENDROS_VERSION`, `BUILD_JOBS`, `CUDA_ARCHS`) and runtime settings. `GLIM_ROS_COMMIT` pins a glim_ros2 commit on top of the cached `GLIM_ROS_REF` layer: changing it rebuilds only glim_ros (about a minute), not GLIM. RTAB-Map (visual odometry / visual SLAM) is built from source only with `BUILD_RTABMAP=true`; without it the localization stack runs without visual odometry.
 
 Mounted folders: `user_worlds/` (your worlds), `saved_maps/` (GLIM and RTAB-Map maps), `bags/`, `docker/utils/` (aliases, CycloneDDS config; editable without rebuilding).
 
@@ -126,6 +126,9 @@ GPS localization in the sim:
   east-north-up; the robot's 1.57 is for the Xsens, whose yaw reads 0 at north.
 - **Participant limit:** the CycloneDDS config allows up to 100 participants per domain (default 32,
   too few for the full GPS stack).
+
+#### Topic health (Testudo, experimental)
+`health` (live TUI) and `health_check` (one-shot report) check the topics against `jo_sim/config/testudo.yaml`, the robot interface the simulator must expose. Not reliable on the full stack yet (see PLAN.md).
 
 #### glim_ros2 development
 To test a local checkout of glim_ros2, uncomment its volume in `compose.yaml` and set `EXTRA_BUILD_PACKAGES=glim_ros` in `.env`: it is rebuilt at container start.
