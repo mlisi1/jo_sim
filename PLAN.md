@@ -470,6 +470,22 @@ Findings:
   - **Track finding (for the re-tuning below), one run:** a straight 0.5 m/s command for 4 s turned
     the yaw 0.70 -> 1.06 rad, and a 0.5 rad/s turn command gave 0.74 rad/s.
     Both resolved, see "Track model re-tuning" below: the drift was a collision, the turn gain is now calibrated.
+- **check_worlds --robot over all worlds: done 2026-11-17** (the user gave the go). 44 min for 51
+  worlds. The results table is in docs/user-guide/worlds.md:
+  - 19 good, 4 usable but slower, 9 too slow (RTF < 0.5), 3 unusable (RTF 0.003);
+  - 1 with no lidar (hemicyl, a heightmap);
+  - 15 don't load. These are the same ones that failed in Phase B: missing models or media
+    (powerplant, test_city, yosemite...) or Gazebo segfaults (office_small, simple_env_*,
+    cyberzoo_orange_poles...). Not regressions; fixing them is open, if those worlds are wanted.
+  - **Probe bug, fixed:** the first pass reported the camera clouds at 8–15 Hz, or "no messages",
+    in 9 worlds. A direct check in city_osm_roundabout gave 30.3 Hz on every camera topic. The
+    probe was at fault:
+    - it was single-threaded Python and fully deserialized two ~9 MB clouds at 30 Hz;
+    - it subscribed best effort, and CycloneDDS then loses a whole cloud when any fragment drops.
+    Now: raw subscriptions (stamp read from the CDR bytes, only sampled lidar/scan messages
+    deserialized, numpy for the valid-point count), and reliable QoS depth 10. Re-checked the 10
+    affected worlds: all OK.
+  - **RTF varies between runs** by up to about 0.2 on heavy worlds (montreal2019 0.66 vs 0.43).
 - **D3 dynamic obstacles: done 2026-11-17.**
   - **Gazebo actors don't work:** the RGL lidar sees nothing of them, because RGLServerPluginManager
     only takes entities with Visual + Geometry, and a skinned actor has neither. Verified: 0 returns

@@ -99,9 +99,8 @@ def check(name, path, seconds):
 def probe_sensors(domain, seconds):
     """Subscribe to every robot-interface topic for `seconds` (wall time) in `domain`.
     Returns {topic: {'n', 'hz' (sim time, from header stamps), ...}}."""
-    import math
     import rclpy
-    from rclpy.qos import qos_profile_sensor_data
+    from rclpy.qos import QoSProfile, ReliabilityPolicy
     from rosidl_runtime_py.utilities import get_message
     from sensor_msgs_py import point_cloud2
 
@@ -110,24 +109,44 @@ def probe_sensors(domain, seconds):
     node = rclpy.create_node('check_worlds_probe', context=ctx)
     stats = {t: {'n': 0, 'stamps': []} for t in SENSOR_TOPICS}
 
-    def cb(topic):
-        def f(msg):
+    # Raw subscriptions: the stamp is read from the serialized bytes (every sensor message starts
+    # with a std_msgs/Header), and only the sampled lidar / scan messages are deserialized. A probe
+    # that deserialized everything (two ~9 MB colour clouds at 30 Hz) fell behind and reported the
+    # camera clouds at 8-15 Hz when they ran at 30.
+    import struct
+    import numpy as np
+    from rclpy.serialization import deserialize_message
+
+    def stamp_of(data):
+        # CDR: 4-byte encapsulation header (byte 1: 0 = big endian, 1 = little endian), then
+        # header.stamp.sec (int32) and header.stamp.nanosec (uint32)
+        sec, nsec = struct.unpack_from('<iI' if data[1] == 1 else '>iI', data, 4)
+        return sec + nsec * 1e-9
+
+    def cb(topic, mclass):
+        def f(data):
             st = stats[topic]
             st['n'] += 1
-            st['stamps'].append(msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
+            st['stamps'].append(stamp_of(data))
             if topic == '/velodyne_points' and st['n'] % 5 == 1:
+                msg = deserialize_message(data, mclass)
                 xyz = point_cloud2.read_points_numpy(msg, field_names=('x', 'y', 'z'))
-                good = [p for p in xyz if all(map(math.isfinite, p)) and math.dist(p, (0, 0, 0)) > 0.3]
-                st['points'] = len(xyz)
-                st['valid'] = len(good)
+                good = xyz[np.isfinite(xyz).all(axis=1) & (np.linalg.norm(xyz, axis=1) > 0.3)]
+                st['points'] = int(len(xyz))
+                st['valid'] = int(len(good))
                 # ground returns: the VLP-16 is ~1 m above the ground (base_link 0.45 + 0.62)
-                st['ground'] = sum(1 for p in good if p[2] < -0.6)
+                st['ground'] = int((good[:, 2] < -0.6).sum())
             elif topic == '/scan' and st['n'] % 5 == 1:
+                msg = deserialize_message(data, mclass)
                 st['valid_ratio'] = sum(msg.range_min <= r <= msg.range_max for r in msg.ranges) / max(1, len(msg.ranges))
         return f
 
     for topic, (mtype, _) in SENSOR_TOPICS.items():
-        node.create_subscription(get_message(mtype), topic, cb(topic), qos_profile_sensor_data)
+        mclass = get_message(mtype)
+        # Reliable, as the sim's publishers: best effort loses a whole ~9 MB cloud when one DDS
+        # fragment is dropped, which under load is most of them
+        node.create_subscription(mclass, topic, cb(topic, mclass),
+                                 QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE), raw=True)
     executor = rclpy.executors.SingleThreadedExecutor(context=ctx)
     executor.add_node(node)
     t0 = time.time()

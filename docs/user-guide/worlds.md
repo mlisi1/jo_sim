@@ -136,3 +136,20 @@ sim_worlds                       # the list, with the results: ok / slow / fails
 
 The results are kept in `user_worlds/.cache/world_status.json`. `check_worlds --robot` takes about
 70 s per world and needs the GPU.
+
+### Results (2026-11-17, all 51 bundled worlds, with the robot)
+
+RTF varies by ±0.2 between runs on heavy worlds. Measured on an RTX-class desktop with nothing else
+running.
+
+| Status | Worlds |
+|---|---|
+| **Good** (robot interface OK, RTF ≥ 0.8) | agriculture, azcar, city_osm_roundabout, city_osm_roundabout_combined, cyberzoo, cyberzoo2019_ralphthesis2020, empty_aerial_manipulation, fetchit_challenge_arena_montreal2019_onlylights, house, inspection, neighborhood, obstacles, office_cpr, office_cpr_construction, outdoor, rubble, skidpan, wall_aerial_manipulation, waypoint |
+| **Usable, slower** (OK, RTF 0.5–0.8) | cyberzoo_panel, fetchit_challenge_arena_montreal2019_highlights, fetchit_challenge_simple_highlights, small_city |
+| **Too slow for the stack** (OK, RTF < 0.5) | barrels, canyonview_field, cyberzoo_4_panels, fetchit_challenge_arena_montreal2019, fetchit_challenge_assembly, fetchit_challenge_atrezzo, fetchit_challenge_simple, fetchit_challenge_tests, fetchit_challenge_tests_lowlights |
+| **Unusable: RTF ≈ 0.003** (no sensor data in the test window) | warehouse, drone_race_track_2018_actual, drone_race_track_2018_actual_with_gatepapers |
+| **No lidar** (heightmap terrain, not seen by RGL) | hemicyl |
+| **Don't load** (missing models or media, or Gazebo crashes) | cyberzoo2019_orange_poles, cyberzoo2019_orange_poles_panels, cyberzoo2019_orange_poles_panels_mats, cyberzoo_orange_poles, office_earthquake, office_env_large, office_small, powerplant, simple_env_1, simple_env_2, simple_env_3, test_city, test_zone, workshop_example, yosemite |
+
+With no lidar returns, `/scan` stays silent: `velodyne_laserscan` rejects empty clouds. It would
+do the same on the robot.
