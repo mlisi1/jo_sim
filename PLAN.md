@@ -13,11 +13,12 @@ Order: **A → DendROS/Testudo → B → C → E → F → D**.
 
 ---
 
-## Where we left off (2026-11-17, end of day)
+## Where we left off (2026-11-18, end of day)
 
-**Implementation is essentially finished.** Every simulator item Michele approved is done, tested and
-pushed to `dev`. What's left is documentation (Phase G: G2–G5 and the media) and the items Michele
-put on hold. `dev` is merged into `main` only when everything is finished (Michele); the merge also
+**Implementation is finished; the docs are nearly finished.** G1–G4 are done; the media (G4) went
+through Michele's review on 2026-11-17/18 and three items remain (Next session checklist, item 1),
+then G5. Everything is committed on `dev`; **nothing of the docs work (a5a856c, d81e307) is pushed
+yet**. `dev` is merged into `main` only when everything is finished (Michele); the merge also
 publishes the docs site.
 
 **Done** (details in each phase below; jo_sim commits on `dev`):
@@ -57,91 +58,78 @@ publishes the docs site.
 - **Git:** branch `dev` everywhere; push the submodules first; no Co-Authored-By line; docs updated
   in the same commit as the feature; `mkdocs build --strict` must pass. Never `mkdocs gh-deploy`.
 
-### Next session checklist (docs: G2–G5 and the media)
-1. **Media plan: agreed (2026-11-17).** Michele: Claude records **all 7 videos** as scripted
-   screen captures (ffmpeg x11grab on the GUI while a script drives the sim: scenario runner,
-   `/cmd_vel`, `sim_control`; RViz goals sent as topics). GPU use for the screenshots, the videos and
-   the thumbnail renderer is OK **when it's free**: check `nvidia-smi` first and coordinate with the
-   other sessions through SendMessage (testudo-c2 was watching domain 77 on 2026-11-17).
-   - **v1 (screen recordings on HDMI-1-0) was rejected by Michele (2026-11-17 evening):** "low
-     effort", wants composed, catchy videos. The HDMI monitor is driven by the NVIDIA GPU (reverse
-     PRIME) and *crashes when Gazebo starts*: never record on it again. The 3 v1 videos were dropped
-     from the commit. Michele: MP4 is fine (GIF at his alias settings: 128 MB for 27 s), storyboard OK,
-     PC free for Claude to work autonomously.
-   - **v2 pipeline (off-screen, frame-locked):** `docs/gen/media/rig.py` runs in the container. The
-     sim is paused and stepped one video frame (1/30 s) at a time: set the camera pose(s) → step →
-     save the Gazebo camera frame (camera sensor, headless GPU) → grab RViz / GLIM viewer from Xvfb
-     `:99` (software GL, docs-only RViz configs without panels). Smooth and synchronized whatever the
-     machine speed. Composition on the host with ffmpeg + PIL overlays: title cards, captions,
-     split-screen, picture-in-picture, crossfades, in the site style (Inter, JetBrains Mono, navy /
-     cyan / amber, logo). Fonts in `~/.cache/jo_sim_media/fonts`. Clips: MP4 H.264, `autoplay muted
-     loop playsinline`, no controls (they behave like GIFs).
-   - **v2 shot list:**
-     - V1 hero reel (index), 1920×1080, ~25 s: logo card → orbit around Jo (office) → split Gazebo
-       chase / RViz lidar while driving → Nav2 goal with path → small_city aerial GPS drive → GLIM map
-       time-lapse → closing card `./jo sim`.
-     - V2 first-run, ~10 s: split Gazebo chase cam / RViz lidar + cameras, driving.
-     - V3 navigation local, ~12 s: RViz top-down with costmaps and path, Gazebo chase PiP.
-     - V4 navigation GPS, ~12 s: small_city aerial follow, live `/gnss` lat/lon overlay.
-     - V5 sim-control, ~10 s: rendered terminal with the real `sim_control` outputs, Gazebo view
-       advancing only when stepped / playing.
-     - V6 scenarios, ~12 s: office_crossing (walker obstacle) orbit/aerial, overlay of the real
-       `./jo scenario office_crossing` output (PASS).
-     - V7 GLIM maps, ~12 s: GLIM viewer time-lapse of a drive loop, Gazebo PiP, then `offline_viewer`.
-     - Images: install terminal (`./jo up`, `./jo shell` with the DendROS banner) and the DendROS TUI,
-       both in a real Konsole on Xvfb; ground-truth vs GLIM vs EKF plot from a scenario bag.
-   - **World thumbnails v2:** no robot; framing from a top-down depth pass (extent of the non-ground
-     content), then a 3/4 view (~50° down, 45° yaw) fitting that extent; overrides for odd worlds.
-   - **Pending: testudo threshold migration** (asked by the testudo session, agreed with Michele).
-     Testudo dev d0d3aa6 (unpushed) splits severity (`warn`/`error`) from meter colours
-     (`green`/`orange`/`red`). To do together with the testudo submodule bump (now 32f7473, which
-     reads only green/orange, so migrating first would drop jo_sim's thresholds), after Michele
-     pushes testudo: `rate_hz {green: A, orange: B}` → `{warn: A, error: B}`; /scan
-     `invalid_ratio` → `{warn: 0.5, error: 0.8}`; /gnss `position_covariance` →
-     `{warn: 1.0, green: 1.0, orange: 9.0}`; both GLIM `position_covariance_trace` →
-     `{warn: 0.05, green: 0.05, orange: 0.2}`; `cpu_percent`/`memory_mb` are **mandatory**
-     (node_profiling raises a ConfigError on green/orange/red, so the whole config would fail to
-     load): `{warn: 300, error: 600}` / `{warn: 2000, error: 6000}` (behaviour-preserving) or
-     `{warn: 300}` / `{warn: 2000}` (the testudo session's recommendation: busy is degraded, not
-     broken). Michele decides. Verify: no "sets only green/orange/red" warning at load. Testudo dev 1bdd444
-     checks `rate_hz` on every declared topic, so /scan, /imu, /gnss and the cameras start being
-     checked at the bump. Measured headless at RTF 1 (docs topic table): /imu/data 200 Hz (warn
-     180), /scan 10 (9), /gnss 9.9 (9), cameras 30.3 (25): all above warn, at any RTF (the
-     testudo session confirmed rates are measured in sim time when use_sim_time is on).
-     Michele: no rush, testudo is still in development.
-   - **Status (2026-11-18): G4 done, Michele's review round applied.** Pipeline in
-     `docs/gen/media/` (rig.py, shoot.py, compose.py, videos.py, shots/, plot_ground_truth.py;
-     documented in contributing.md). Embedded videos: hero (home), first_run, nav_local, nav_gps,
-     sim_control (reshot: Jo driving, pause freezes it mid-motion, step 500, play), scenario (the
-     real runner attached to the rig), glim_map (reshot in small_city: `/glim_ros/map` in RViz while
-     Nav2 drives 15 m west and 25 m north; shot glim_city.py); ground truth plot (same run: GT vs
-     GLIM vs EKF, compared at the message stamps; light and dark images); world thumbnails v2.
-     DendROS and Testudo: the official repos' GIFs/screens, hotlinked (rule: terminal media come
-     from the official repos or are shot in **terminator**, never Konsole: colours).
-     **Open:** the install page placeholder ("./jo up finishing, then ./jo shell with the DendROS
-     banner"): there is no banner, and a real shot needs recreating the container (and shows
-     the host name in the prompt): asked Michele. Videos 19 MB in all (Pages, no LFS).
-     Possible polish: a lower GPS camera (the aerial view is mostly asphalt). Findings: RViz refuses configs without panels or with the image displays
-     disabled (so the rig crops the 3D view); RViz on Xvfb aborts at start about 1 time in 4
-     (glibc robust-mutex assertion: the rig retries); the stats message omits sim_time at 0;
-     Nav2 rejects goals sent before "Managed nodes are active" (the rig waits for it);
-     once in ~4 starts of `-n local` in small_city (2026-11-17), the EKF stayed at "Waiting for
-     clock to start..." and never published, so there was no `odom` frame and Nav2 never activated
-     (GLIM itself started; log kept in the session scratchpad, not reproduced; to investigate);
-     the scenario runner stops the sim right after the last goal. Videos: 1600×900, CRF 28,
-     ~0.2–0.3 MB/s; docs RViz clouds as flat squares (3 px points tripled the size).
-2. **G4, the media.** 31 placeholders: `grep -rn 'class="media-ph' docs` (8 images, 7 videos, the
-   rest diagrams/screenshots). For each, the caption in the placeholder says what to show.
-   - **Screenshots:** Gazebo GUI, RViz in each mode, the sensor views (cloud, cameras, depth), the
-     GLIM viewer, `offline_viewer`, the DendROS TUI.
-   - **World thumbnails:** a headless camera render per world, for the 23 good and usable worlds
-     (the table in `docs/user-guide/worlds.md`). Write it as a generator in `docs/gen/`, using the
-     same per-world loop as `check_worlds`.
-   - **Videos:** quick start, teleop, local nav goal, GPS goal in a city world, pause/step/RTF,
-     a scenario run, a GLIM map. Short compressed MP4 or WebM, a few MB each, in `docs/assets/`
-     (Pages serves no Git LFS).
-   - **Plot:** ground truth vs GLIM vs EKF, from a scenario bag (`--record all`).
-3. **G2–G3, the remaining text: done 2026-11-17 (session 2).** All 12 `!!! planned` boxes closed.
+### Next session checklist (docs: the last media fixes, then G5)
+1. **Media fixes from Michele's review (2026-11-18), in this order:**
+   1. **GLIM video in GLIM's own viewer.** Michele: the RViz version (`/glim_ros/map`) doesn't
+      read as GLIM; it must be GLIM's GUI. Reshoot `glim_map` in small_city with
+      `glim_view:=true` (keep the Nav2 route of `shots/glim_city.py`: 5 goals ~8 m apart, 15 m
+      west then 25 m north; a single 25 m goal is aborted by Nav2). Problems seen with the viewer
+      on 2026-11-17 (office_cpr, shot glim_map, removed): its camera stays fixed (Jo leaves the
+      view on a 40 m route), and its panels (selection, submap, logging) cover the screen; the rig
+      grabbed the whole Xvfb screen (viewer 2560×1440 at 0,0) and the composition cropped and
+      masked the panels. Options to try: the viewer's config (`config_viewer`/camera mode in the
+      GLIM config dir: a follow or top-down camera, hidden panels) in a docs-only copy, never the
+      robot config; else drive the viewer with xdotool on Xvfb (not installed on the host or in
+      the container: ask before installing). GLIM's map in the viewer appears only once the first
+      submap exists (~frame 190 at stride 3): trim the start. The ground-truth plot can stay from
+      the current glim_city run (its frames.jsonl is in `~/.cache/jo_sim_media/rig/glim_city`;
+      re-running glim_city overwrites it, so regenerate the plot from the run you keep).
+   2. **Ground truth plot: the light and the dark image both show.** The page uses two raw-HTML
+      `<img>` with `#only-light` / `#only-dark` inside a `<figure>`; Material hides them only in
+      some contexts. Fix: check the built HTML; else classes in `docs/assets/css/extra.css`
+      (`[data-md-color-scheme="slate"] .jo-light {display: none}` and the reverse). Check both
+      schemes with headless Chrome.
+   3. **Install page image** (`docs/getting-started/install.md`, the last `media-ph`): Michele is
+      fine with the host name in the prompt. Shoot in **terminator** on Xvfb (never Konsole:
+      colours): `./jo up` starting the container, then `./jo shell` waiting for the workspace
+      build ("[jo_sim] waiting for the workspace build to finish....."). DendROS prints **no
+      banner**: fix the placeholder text. A real `./jo up` needs the container recreated
+      (`./jo down`): confirm with Michele before doing it.
+   Then render (`python3 docs/gen/media/videos.py glim_map hero`), `mkdocs build --strict`,
+   commit (amend or a new commit on dev, no Co-Authored-By), and ask Michele before pushing.
+2. **G5, the review:** a fresh agent with only the site sets up the sim and adds a sensor; Michele
+   reads it as a new user. Then the merge `dev` → `main` (Michele) and Settings → Pages → Source:
+   GitHub Actions.
+3. **On hold: testudo threshold migration** (Michele 2026-11-18: wait, testudo is still in
+   development). Testudo dev (d0d3aa6, 1bdd444; unpushed when last checked) splits severity
+   (`warn`/`error`) from meter colours (`green`/`orange`/`red`). Do it together with the testudo
+   submodule bump (now 32f7473, which reads only green/orange, so migrating first would drop
+   jo_sim's thresholds): `rate_hz {green: A, orange: B}` → `{warn: A, error: B}`; /scan
+   `invalid_ratio` → `{warn: 0.5, error: 0.8}`; /gnss `position_covariance` →
+   `{warn: 1.0, green: 1.0, orange: 9.0}`; both GLIM `position_covariance_trace` →
+   `{warn: 0.05, green: 0.05, orange: 0.2}`; `cpu_percent`/`memory_mb` are **mandatory**
+   (node_profiling raises a ConfigError on green/orange/red, so the whole config would fail to
+   load): `{warn: 300, error: 600}` / `{warn: 2000, error: 6000}` (behaviour-preserving) or
+   `{warn: 300}` / `{warn: 2000}` (the testudo session's recommendation). Michele decides. Verify:
+   no "sets only green/orange/red" warning at load. After the bump `rate_hz` is checked on every
+   declared topic; measured rates (/imu/data 200 Hz vs warn 180, /scan 10 vs 9, /gnss 9.9 vs 9,
+   cameras 30.3 vs 25) pass at any RTF (testudo measures in sim time with use_sim_time).
+4. **Media state (2026-11-18)**, commit d81e307 (pipeline documented in contributing.md):
+   - Off-screen, frame-locked pipeline in `docs/gen/media/`: `shoot.py SHOT` runs
+     `shots/SHOT.py` (with `rig.py` prepended) in the container on domain 79 / partition
+     `jo_sim_docs`, RViz and GLIM's viewer on Xvfb `:99` (shoot.py starts it; kill it by PID when
+     done); frames in `~/.cache/jo_sim_media/rig/SHOT`. `videos.py NAME [--preview]` composes
+     and encodes (`ENCODE` holds per-video CRF/size). `plot_ground_truth.py` makes the plot.
+   - Done and approved: hero (home), first_run, nav_local, nav_gps, sim_control (Jo driving:
+     pause, step 500, play), scenario (the real runner attached to the rig); world thumbnails v2
+     (23 worlds; azcar and skidpan are genuinely empty); ground-truth plot (GT vs GLIM vs EKF at
+     equal message stamps: GLIM 0.4–5.2 cm over 40 m); DendROS and Testudo media hotlinked from
+     their official repos (rule: terminal media come from the official repos, or are shot in
+     **terminator**). Videos 19 MB in all (Pages, no LFS).
+   - Rejected: v1 screen recordings on the HDMI monitor (it crashes when Gazebo starts: never
+     record on it); the office GLIM viewer clip (wall contact, dull); the RViz GLIM clip (doesn't
+     read as GLIM); a Konsole DendROS screenshot (colours).
+   - Possible polish: a lower GPS camera (the aerial view is mostly asphalt).
+   - Findings: RViz refuses configs without panels or with the image displays disabled (the rig
+     crops the 3D view); RViz on Xvfb aborts at start ~1 time in 4 (glibc robust-mutex assertion:
+     the rig retries); the stats message omits sim_time at 0; Nav2 rejects goals sent before
+     "Managed nodes are active" (the rig waits for it); once in ~4 starts of `-n local` in
+     small_city the EKF stayed at "Waiting for clock to start..." and never published (no `odom`,
+     Nav2 never activated; not reproduced, to investigate); the scenario runner stops the sim
+     right after the last goal; `/glim_ros/map` goes out at most every `map_publish_period` s of
+     sim time (default 10; the shot sets 1 s at runtime); comparing odometry with the ground truth
+     must use the message stamps (0.1 s of message age = 5 cm at 0.5 m/s).
+5. **G2–G3, the remaining text: done 2026-11-17 (session 2).** All 12 `!!! planned` boxes closed.
    - Measured, generated: topics (rate, QoS, nodes), TF tree, node parameters (`docs/gen/gen_topics.py`).
      The probe measures in 3 passes: with all clouds in one process the IMU read 27 Hz instead of 200.
    - Performance: `docs/gen/measure_performance.py` on office_cpr (cameras ~1.4 cores each, stack +1.2
@@ -149,14 +137,11 @@ publishes the docs site.
    - The world catalogue generator is still to do, with the thumbnails (G4).
    - The home placeholder "Jo next to a photo of the real robot" was removed: Michele is fine with
      the render already in the hero.
-4. **G5, the review:** a fresh agent with only the site sets up the sim and adds a sensor; Michele
-   reads it as a new user. Then the merge `dev` → `main` (Michele) and Settings → Pages → Source:
-   GitHub Actions.
-5. **Housekeeping:**
+6. **Housekeeping:**
    - Remove the local branch `backup/dev-before-rebase` in jo_description (ask first).
    - The image `jo-sim:rtabmap` (12.8 GB) is kept for RTAB-Map tests: delete it if Michele wants.
-6. **Not checked visually yet:** the GLIM viewer metric point size (0.025 m). Look at it when taking
-   the GLIM screenshots.
+7. **Not checked visually yet:** the GLIM viewer metric point size (0.025 m). Look at it during
+   the GLIM viewer reshoot (item 1.1).
 
 **Docs workflow:**
 - Generated tables: `python3 docs/gen/gen_tables.py`. It needs the container running.
@@ -181,14 +166,18 @@ publishes the docs site.
 - **Scenarios:** `./jo scenario office_out_and_back`, then `office_crossing`. Both PASS; output goes
   to `bags/scenarios/`.
 
-**State at the end of 2026-11-17:**
-- **Container `jo_sim-jo-sim-1`:** recreated on the new image (Michele's OK). No sim or test jobs
-  of this session are running.
+**State at the end of 2026-11-18:**
+- **Container `jo_sim-jo-sim-1`:** running, untouched this session. No sim, rig, Xvfb or terminal
+  of this session is left running (checked at the end).
+- **Git:** jo_sim `dev` is 2 commits ahead of origin (a5a856c, d81e307: docs G4), not pushed;
+  submodules unchanged. Ask Michele before pushing.
+- **Frames cache:** `~/.cache/jo_sim_media/rig/<shot>` (host) holds the frames of every shot;
+  the videos are composed from there, so they can be re-rendered without re-shooting.
 - **glim_ros2:** pinned with `GLIM_ROS_COMMIT` in `.env` (`dev` `da3fae1`). To follow a newer commit,
   set it, run `docker compose build` (about a minute), then `docker compose up -d`.
 - **Images:** `jo-sim:latest` (the container's), and `jo-sim:rtabmap` (BUILD_RTABMAP=true).
-- **The previous session's `mkdocs serve`** on 127.0.0.1:8000 dies with that session; start it again
-  if needed.
+- **`mkdocs serve`** on 127.0.0.1:8000 dies with this session; start it again if needed (a venv
+  with `docs/requirements.txt`).
 
 ### GLIM keys and EKF (2026-11-17)
 - **Sim config `glim_config_bunker_sim`** (jo_navigation `5775a10`). Michele: "first in the sim,
@@ -756,8 +745,8 @@ Asked by Michele on 2026-11-17. It must be thorough and complete, with images an
   - pause, step and RTF;
   - building a GLIM map and opening it.
 
-  I can record them by screen capture (ffmpeg) while a scripted run drives the sim. Michele records
-  the ones that need real interaction, or reviews mine.
+  (Superseded: the videos are rendered off-screen by `docs/gen/media`, see the Next session
+  checklist, item 4. Terminal images come from the official repos or are shot in terminator.)
 - **Diagrams:** Mermaid (architecture, launch graph, data flow), and the TF tree.
 
 ### Kept up to date by generation
