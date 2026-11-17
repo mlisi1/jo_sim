@@ -20,3 +20,8 @@ python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt
 - Media placeholders are `<div class="media-ph" data-kind="image|video|diagram">` blocks. Replace
   them with real media in `docs/assets/`. Keep videos short and compressed: Pages serves no Git LFS.
 - Tooltips for abbreviations come from `docs/includes/abbreviations.md`.
+- **Generated tables** (launch arguments, bridged topics, `./jo help`) live in
+  `docs/includes/generated/`, and the pages include them. Don't edit them by hand: with the container
+  up, run `python3 docs/gen/gen_tables.py` and commit the result. Do it whenever a launch argument,
+  a bridge config or `./jo` changes.
+- **The logo and home render** come from `docs/gen/render_logo/render.sh` (CPU only).

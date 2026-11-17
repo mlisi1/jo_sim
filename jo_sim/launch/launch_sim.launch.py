@@ -134,20 +134,22 @@ def generate_launch_description():
         DeclareLaunchArgument('rtf', default_value='',
                               description="Target real-time factor; empty = the world's own (usually 1), "
                                           '0 = as fast as possible'),
-        DeclareLaunchArgument('gz_verbosity', default_value='3'),
+        DeclareLaunchArgument('gz_verbosity', default_value='3', description='Gazebo log level (0-4)'),
         DeclareLaunchArgument('sens_rviz', default_value='false',
                               description='RViz with the simulated sensors (as sens_rviz in jo_bringup)'),
         # Spawn pose and GNSS datum: empty = from the world's sidecar <world>.yaml, else the defaults
         # (0, 0, 0.6, yaw 0; datum Pisa, UTM 32N, used when the world has no <spherical_coordinates>)
-        DeclareLaunchArgument('x', default_value=''),
-        DeclareLaunchArgument('y', default_value=''),
-        DeclareLaunchArgument('z', default_value=''),
-        DeclareLaunchArgument('yaw', default_value=''),
+        DeclareLaunchArgument('x', default_value='', description='[m] spawn x; empty = sidecar, else 0'),
+        DeclareLaunchArgument('y', default_value='', description='[m] spawn y; empty = sidecar, else 0'),
+        DeclareLaunchArgument('z', default_value='', description='[m] spawn z; empty = sidecar, else 0.6'),
+        DeclareLaunchArgument('yaw', default_value='', description='[rad] spawn yaw; empty = sidecar, else 0'),
         DeclareLaunchArgument('spawn', default_value='',
                               description="Named spawn pose from the world's sidecar (spawns:)"),
-        DeclareLaunchArgument('latitude', default_value=''),
-        DeclareLaunchArgument('longitude', default_value=''),
-        DeclareLaunchArgument('elevation', default_value=''),
+        DeclareLaunchArgument('latitude', default_value='',
+                              description='[deg] GNSS datum for worlds without <spherical_coordinates>; '
+                                          'empty = sidecar, else Pisa'),
+        DeclareLaunchArgument('longitude', default_value='', description='[deg] GNSS datum, see latitude'),
+        DeclareLaunchArgument('elevation', default_value='', description='[m] GNSS datum, see latitude'),
     ]
     args += [DeclareLaunchArgument(s, default_value='true', description=f'Publish the {s} topics')
              for s in SENSOR_BRIDGES]

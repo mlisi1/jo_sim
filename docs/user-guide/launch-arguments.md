@@ -15,39 +15,24 @@ Pass arguments as `name:=value`, to `ros2 launch` or after `./jo sim`.
 
 ## Robot flags (same as `jo_bringup`)
 
-| Argument | Default | |
-|---|---|---|
-| `imu` | `true` | IMU topics |
-| `gnss` | `false` | GNSS topic |
-| `lidar` | `true` | Velodyne cloud and `/scan` |
-| `front_cam`, `back_cam` | `false` | RealSense topics |
-| `bunker` | `false` | Accepted for compatibility; the simulated base always runs. |
-| `sens_rviz` | `false` | RViz with the sensors |
-| `localization` | `false` | GLIM + EKF |
-| `localization_gps` | `false` | GPS localization (navsat_transform) |
-| `navigation` | `false` | Nav2, local |
-| `navigation_gps` | `false` | Nav2, GPS |
-| `glim_view` | `false` | GLIM's viewer window |
-| `use_sim_time` | `true` | Always true in simulation |
+`sim_bringup.launch.py` declares them with the robot's names and defaults.
+
+--8<-- "docs/includes/generated/launch_args_robot.md"
 
 ## Simulator arguments
 
-| Argument | Default | |
-|---|---|---|
-| `world` | `office_cpr` | World name (see `sim_worlds`) or path |
-| `gui` | `true` | Gazebo GUI; `false` runs the server only (headless rendering) |
-| `follow` | `true` | The GUI camera follows the robot |
-| `paused` | `false` | Start paused ([Simulation control](sim-control.md)) |
-| `rtf` | the world's | Target real-time factor; `0` = as fast as possible |
-| `gz_verbosity` | `3` | Gazebo log level |
-| `x`, `y`, `z`, `yaw` | sidecar, else `0 0 0.6 0` | Spawn pose |
-| `spawn` | | A named spawn pose from the world's sidecar |
-| `latitude`, `longitude`, `elevation` | sidecar, else Pisa | GNSS datum, used when the world has no `<spherical_coordinates>` |
-| `sim_noise` | `true` | Sensor noise (IMU, GNSS, cameras, lidar) |
-| `lidar_range_stddev` | `0.015` | [m] lidar range noise when `sim_noise` is on |
-| `glim_config` | `glim_config_bunker_sim` | GLIM config directory |
-| `glim_anchor_frame` | `base` | Origin of GLIM's map and odom frames (`imu` or `base`) |
+Declared by `launch_sim.launch.py`. Through `sim_bringup` and `./jo sim` they are passed as
+`name:=value`.
 
-!!! planned "Planned content (G3)"
-    These tables will be generated from the `DeclareLaunchArgument`s, and CI will check that they
-    are up to date.
+--8<-- "docs/includes/generated/launch_args_sim.md"
+
+## Stack arguments
+
+Declared by the `jo_navigation` launch files that `sim_bringup` includes. They are passed through
+unchanged.
+
+--8<-- "docs/includes/generated/launch_args_stack.md"
+
+!!! info "Generated tables"
+    These tables come from `ros2 launch ... --show-args`, through `docs/gen/gen_tables.py`.
+    Run it again after changing a launch argument.

@@ -34,7 +34,7 @@ Machine-readable versions of the whole site are at [`llms.txt`](https://mlisi1.g
 | a world patch | `check_worlds <world>` (and `--robot`) |
 | a sensor, bridge or emulation | `ros2 topic hz` / `echo` in the sandbox; Testudo `health_check` |
 | localization behaviour | `/sim/ground_truth/odom` against GLIM and the EKF |
-| docs | `mkdocs build --strict` |
+| docs | `python3 docs/gen/gen_tables.py` (if arguments, bridges or `./jo` changed), then `mkdocs build --strict` |
 
 ## Where things live
 
