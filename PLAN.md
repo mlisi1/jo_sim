@@ -498,6 +498,27 @@ Findings:
 
 ## Phase E — Testing workflow
 
+**Status (2026-11-17): scenarios and bags done; CI to do.**
+- **The runner**, `jo_sim/scripts/scenario` (alias `scenario`, `./jo scenario`):
+  - launches sim_bringup headless in its own process group, and waits for the ground truth, the
+    map->base_link TF and bt_navigator `active`;
+  - sends `navigate_to_pose` goals given in world coordinates (converted with the spawn pose);
+  - samples the localization error against the ground truth at 5 Hz;
+  - writes `report.json`, `launch.log` and an optional bag (the robot's all / compressed profiles,
+    minus `/sim/*_raw`) to `bags/scenarios/<date>_<name>/`;
+  - exits 0 = pass, 1 = fail, 2 = error.
+- **Scenarios** are searched in `user_worlds/scenarios/`, then `jo_sim/scenarios/`. The first one,
+  `office_out_and_back`, drives 4.5 m along +y and back. The corridor was checked free on the mesh.
+- **Verified in the sandbox:**
+  - PASS: goals reached in 8 s each, final errors 0.24 / 0.26 m (about Nav2's goal tolerance),
+    localization max 4.8 cm, final 6 mm.
+  - A 1 cm variant FAILs with exit 1.
+  - `--record compressed` records the bag, ground truth included.
+- **Max localization error varies between runs** (4.8 vs 10.9 cm; the second run was recording).
+  It peaks during the turn. Watch it before tightening the limits.
+- **CI:** GitHub-hosted runners have no GPU, so the smoke scenarios need a self-hosted runner, or a
+  CPU-only mode (Phase F). To discuss with Michele.
+
 - Scenario files: world + spawn + mission + pass criteria (goal reached, ground-truth error).
   `ros2 launch jo_sim scenario.launch.py scenario:=...`, headless.
 - Bag per run into `./bags` (reuse jo-zotac's YAML recording profiles).

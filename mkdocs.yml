@@ -140,6 +140,7 @@ nav:
       - Sensors: user-guide/sensors.md
       - Simulation control: user-guide/sim-control.md
       - Ground truth: user-guide/ground-truth.md
+      - Scenarios: user-guide/scenarios.md
       - GLIM maps: user-guide/glim-maps.md
       - Two simulations at once: user-guide/multiple-simulations.md
       - DendROS and Testudo: user-guide/dendros-testudo.md

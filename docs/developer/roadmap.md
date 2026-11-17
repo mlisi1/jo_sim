@@ -12,6 +12,6 @@ The working roadmap, with session notes, is
 | D2: ground truth | :material-check-circle: done |
 | D3: dynamic obstacles | :material-circle-outline: planned |
 | Track model re-tuning (steering calibrated against the ground truth) | :material-check-circle: done |
-| E: testing workflow (scenarios, bags, CI) | :material-circle-outline: planned |
+| E: testing workflow (scenarios, bags, CI) | :material-progress-wrench: scenarios and bags done; CI to do |
 | F: Docker (base image, compose profiles) | :material-circle-outline: planned |
 | G: this documentation site | :material-progress-wrench: in progress |

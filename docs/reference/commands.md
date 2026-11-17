@@ -16,6 +16,7 @@
 | `sim_worlds` | `ros2 run jo_sim list_worlds` | |
 | `check_worlds` | `ros2 run jo_sim check_worlds` | |
 | `sim_control` | `ros2 run jo_sim sim_control` | `play`, `pause`, `step [N]`, `status` |
+| `scenario` | `ros2 run jo_sim scenario` | run a scenario headless: pass/fail, report, bag (`--list`) |
 | `teleop` | `teleop_twist_keyboard` with sim time | |
 | `save_map` | `ros2 service call /glim_ros/save_map std_srvs/srv/Trigger` | |
 | `offline_viewer` | `ros2 run glim_ros offline_viewer` | |

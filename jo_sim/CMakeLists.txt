@@ -25,12 +25,12 @@ install(TARGETS frame_restamp velodyne_emulation depth_to_mm DESTINATION lib/${P
 ament_python_install_package(${PROJECT_NAME})
 
 install(
-  PROGRAMS scripts/list_worlds scripts/check_worlds scripts/realsense_tf scripts/gui_follow scripts/sim_control
+  PROGRAMS scripts/list_worlds scripts/check_worlds scripts/realsense_tf scripts/gui_follow scripts/sim_control scripts/scenario
   DESTINATION lib/${PROJECT_NAME}
 )
 
 install(
-  DIRECTORY config launch rviz
+  DIRECTORY config launch rviz scenarios
   DESTINATION share/${PROJECT_NAME}
 )
 

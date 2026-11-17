@@ -1,0 +1,360 @@
+#!/usr/bin/env python3
+"""Run a scenario headless and check it against pass criteria (Phase E).
+
+    scenario <name | path.yaml> [--record none|all|compressed] [--gui] [--rviz] [--out DIR]
+    scenario --list
+
+A scenario (jo_sim/scenarios/<name>.yaml) gives a world, a spawn pose, the navigation mode, a mission
+(goals in WORLD coordinates) and pass criteria. The runner:
+  1. starts sim_bringup.launch.py headless, in its own process group, with the environment's
+     ROS_DOMAIN_ID / GZ_PARTITION (use ./jo --domain/--partition to run it next to another sim);
+  2. waits for /sim/ground_truth/odom, the map -> base_link TF and Nav2 (bt_navigator active);
+  3. optionally records a bag (the robot's profiles: all, or compressed = no raw images);
+  4. sends the goals to Nav2 (navigate_to_pose, converted from world to map coordinates: GLIM's map
+     frame starts at the spawn pose), and samples the ground truth and the localization;
+  5. writes report.json (and the bag) to <out>/<date>_<name>/, stops everything, and exits
+     0 = pass, 1 = fail, 2 = error.
+
+Ground truth is used only here, to evaluate: the stack never sees it.
+"""
+import argparse
+import datetime
+import json
+import math
+import os
+import pathlib
+import signal
+import subprocess
+import sys
+import time
+
+import yaml
+
+from ament_index_python.packages import get_package_share_directory
+from jo_sim.world_tools import resolve_world, world_settings
+
+SHARE = pathlib.Path(get_package_share_directory('jo_sim'))
+SCENARIO_DIRS = [pathlib.Path(os.environ.get('JO_SIM_SCENARIOS', '/home/ros/user_worlds/scenarios')),
+                 SHARE / 'scenarios']
+# The robot's recording profiles (jo-zotac docker/record_all.bash), plus the sim-only raw sensor
+# topics (/sim/*_raw: duplicates of what driver emulation publishes). The ground truth is kept.
+_SIM_RAW = r'|^/sim/.*_raw$'
+RECORD_EXCLUDE = {
+    'all': r'(scanend|theora|compressedDepth|depth_.*/image_raw/compressed|image_rect_raw/compressed' + _SIM_RAW + ')',
+    'compressed': r'(scanend|theora|compressedDepth|depth_.*/image_raw/compressed|image_rect_raw/compressed'
+                  r'|/image_raw$|/image_rect_raw$' + _SIM_RAW + ')',
+}
+NAV_FLAGS = {
+    'none': {},
+    'local': {'localization': 'true', 'navigation': 'true'},
+    'gps': {'gnss': 'true', 'localization_gps': 'true', 'navigation_gps': 'true'},
+}
+
+
+def log(msg):
+    print(f'[scenario] {msg}', flush=True)
+
+
+def find_scenario(arg):
+    p = pathlib.Path(arg)
+    if p.suffix in ('.yaml', '.yml') and p.is_file():
+        return p
+    for d in SCENARIO_DIRS:
+        for ext in ('.yaml', '.yml'):
+            if (d / f'{arg}{ext}').is_file():
+                return d / f'{arg}{ext}'
+    raise SystemExit(f'scenario: {arg} not found (searched {", ".join(map(str, SCENARIO_DIRS))})')
+
+
+def list_scenarios():
+    seen = {}
+    for d in SCENARIO_DIRS:
+        for f in sorted(d.glob('*.y*ml')):
+            seen.setdefault(f.stem, f)
+    for name, f in seen.items():
+        desc = (yaml.safe_load(f.read_text()) or {}).get('description', '')
+        print(f'{name:28s} {desc}  ({f})')
+
+
+def yaw_of(q):
+    return math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
+
+
+def wrap(a):
+    return math.atan2(math.sin(a), math.cos(a))
+
+
+class Spawn:
+    """World <-> map conversion: GLIM's map frame starts at the spawn pose (glim_anchor_frame base)."""
+
+    def __init__(self, x, y, yaw):
+        self.x, self.y, self.yaw = x, y, yaw
+
+    def to_map(self, x, y, yaw):
+        dx, dy = x - self.x, y - self.y
+        c, s = math.cos(-self.yaw), math.sin(-self.yaw)
+        return c * dx - s * dy, s * dx + c * dy, wrap(yaw - self.yaw)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('scenario', nargs='?')
+    ap.add_argument('--list', action='store_true', help='list the scenarios')
+    ap.add_argument('--record', choices=['none', 'all', 'compressed'], help='override the scenario')
+    ap.add_argument('--gui', action='store_true', help='open the Gazebo GUI')
+    ap.add_argument('--rviz', action='store_true', help='open RViz')
+    ap.add_argument('--out', default='/home/ros/bags/scenarios', help='output directory')
+    ap.add_argument('--ready-timeout', type=float, default=240.0, help='[s, wall] wait for the stack')
+    a = ap.parse_args()
+    if a.list:
+        list_scenarios()
+        return 0
+    if not a.scenario:
+        ap.error('a scenario name or path is needed (or --list)')
+
+    path = find_scenario(a.scenario)
+    sc = yaml.safe_load(path.read_text()) or {}
+    name = path.stem
+    nav = sc.get('nav', 'local')
+    if nav not in NAV_FLAGS:
+        raise SystemExit(f'scenario: nav must be one of {list(NAV_FLAGS)}')
+    record = a.record or sc.get('record', 'none')
+
+    # Launch arguments and the resolved spawn pose (command line style: sidecar < scenario)
+    world = sc.get('world', 'office_cpr')
+    largs = {'world': world, 'gui': 'true' if a.gui else 'false', 'rviz': 'true' if a.rviz else 'false',
+             **NAV_FLAGS[nav]}
+    spawn = sc.get('spawn')
+    overrides = {}
+    if isinstance(spawn, str):
+        largs['spawn'] = spawn
+    elif isinstance(spawn, dict):
+        for k in ('x', 'y', 'z', 'yaw'):
+            if k in spawn:
+                largs[k] = overrides[k] = str(spawn[k])
+    largs.update({k: str(v) for k, v in (sc.get('launch_args') or {}).items()})
+    st = world_settings(resolve_world(world), overrides, largs.get('spawn', ''))
+    sp = Spawn(float(st['x']), float(st['y']), float(st['yaw']))
+
+    stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    out = pathlib.Path(a.out) / f'{stamp}_{name}'
+    out.mkdir(parents=True, exist_ok=True)
+    log(f'{name}: world {world}, spawn x {sp.x} y {sp.y} yaw {sp.yaw}, nav {nav}, record {record}')
+    log(f'output: {out}')
+
+    cmd = ['ros2', 'launch', 'jo_sim', 'sim_bringup.launch.py'] + [f'{k}:={v}' for k, v in largs.items()]
+    launch_log = open(out / 'launch.log', 'w')
+    launch = subprocess.Popen(cmd, stdout=launch_log, stderr=subprocess.STDOUT, start_new_session=True)
+    bag = None
+    report = {'scenario': name, 'file': str(path), 'world': world, 'nav': nav,
+              'spawn': {'x': sp.x, 'y': sp.y, 'yaw': sp.yaw}, 'started': stamp,
+              'goals': [], 'criteria': {}, 'result': 'error'}
+    try:
+        report.update(run(sc, sp, a, out, launch, record, report))
+    except Exception as e:  # noqa: BLE001  (any failure is reported, then everything is stopped)
+        report['error'] = f'{type(e).__name__}: {e}'
+        log(f'ERROR {report["error"]}')
+    finally:
+        stop(launch, 'launch')
+        launch_log.close()
+        (out / 'report.json').write_text(json.dumps(report, indent=2))
+
+    log(f"result: {report['result'].upper()}  (report: {out / 'report.json'})")
+    for k, c in report['criteria'].items():
+        log(f"  {'ok  ' if c['ok'] else 'FAIL'} {k}: {c['value']} (limit {c['limit']})")
+    return {'pass': 0, 'fail': 1}.get(report['result'], 2)
+
+
+def stop(proc, what, grace=20.0):
+    if proc is None or proc.poll() is not None:
+        return
+    try:
+        pg = os.getpgid(proc.pid)
+        os.killpg(pg, signal.SIGINT)
+        try:
+            proc.wait(timeout=grace)
+        except subprocess.TimeoutExpired:
+            log(f'{what} still running after {grace:.0f} s: SIGKILL')
+            os.killpg(pg, signal.SIGKILL)
+            proc.wait(timeout=10)
+    except ProcessLookupError:
+        pass
+
+
+def run(sc, sp, a, out, launch, record, report):
+    import rclpy
+    from rclpy.action import ActionClient
+    from rclpy.node import Node
+    from rclpy.parameter import Parameter
+    from rclpy.time import Time
+    from lifecycle_msgs.srv import GetState
+    from nav2_msgs.action import NavigateToPose
+    from nav_msgs.msg import Odometry
+    import tf2_ros
+
+    rclpy.init()
+    node = Node('scenario_runner', parameter_overrides=[Parameter('use_sim_time', value=True)])
+    tf_buf = tf2_ros.Buffer()
+    tf2_ros.TransformListener(tf_buf, node)
+    gt = {'msg': None}
+    node.create_subscription(Odometry, '/sim/ground_truth/odom', lambda m: gt.__setitem__('msg', m), 10)
+    nav_client = ActionClient(node, NavigateToPose, 'navigate_to_pose')
+    bt_state = node.create_client(GetState, '/bt_navigator/get_state')
+    nav = sc.get('nav', 'local')
+
+    def spin(sec=0.05):
+        rclpy.spin_once(node, timeout_sec=sec)
+        if launch.poll() is not None:
+            raise RuntimeError(f'the launch exited (code {launch.returncode}), see launch.log')
+
+    def sim_now():
+        return node.get_clock().now().nanoseconds * 1e-9
+
+    def tf_pose():
+        try:
+            t = tf_buf.lookup_transform('map', 'base_link', Time())
+        except tf2_ros.TransformException:
+            return None
+        tr = t.transform.translation
+        return tr.x, tr.y, yaw_of(t.transform.rotation)
+
+    def gt_world():
+        m = gt['msg']
+        if m is None:
+            return None
+        p = m.pose.pose.position
+        return p.x, p.y, yaw_of(m.pose.pose.orientation)
+
+    # ── Wait for the simulation and the stack ──
+    deadline = time.time() + a.ready_timeout
+    log('waiting for the ground truth' + ('' if nav == 'none' else ', localization and Nav2'))
+    while gt['msg'] is None:
+        spin()
+        if time.time() > deadline:
+            raise TimeoutError('no /sim/ground_truth/odom')
+    if nav != 'none':
+        while tf_pose() is None:
+            spin()
+            if time.time() > deadline:
+                raise TimeoutError('no map -> base_link TF (localization)')
+        while True:
+            if bt_state.wait_for_service(timeout_sec=0.5):
+                fut = bt_state.call_async(GetState.Request())
+                while not fut.done():
+                    spin()
+                if fut.result().current_state.label == 'active':
+                    break
+            spin(0.2)
+            if time.time() > deadline:
+                raise TimeoutError('bt_navigator not active')
+        if not nav_client.wait_for_server(timeout_sec=max(1.0, deadline - time.time())):
+            raise TimeoutError('no navigate_to_pose action server')
+    settle = float(sc.get('settle', 3.0))
+    t_ready = sim_now()
+    while sim_now() - t_ready < settle:
+        spin()
+    log(f'ready at sim time {sim_now():.1f} s')
+
+    bag = None
+    if record != 'none':
+        bag = subprocess.Popen(['ros2', 'bag', 'record', '--all', '--use-sim-time', '-s', 'mcap',
+                                '--exclude-regex', RECORD_EXCLUDE[record], '-o', str(out / 'bag')],
+                               stdout=open(out / 'bag.log', 'w'), stderr=subprocess.STDOUT,
+                               start_new_session=True)
+        time.sleep(2.0)
+
+    # ── Mission ──
+    loc = {'max': 0.0, 'max_yaw': 0.0, 'samples': 0}
+
+    def sample_localization():
+        g, p = gt_world(), tf_pose()
+        if g is None or p is None:
+            return
+        gx, gy, gyaw = sp.to_map(*g)
+        e = math.hypot(p[0] - gx, p[1] - gy)
+        loc['max'] = max(loc['max'], e)
+        loc['max_yaw'] = max(loc['max_yaw'], abs(wrap(p[2] - gyaw)))
+        loc['samples'] += 1
+        loc['last'] = e
+        loc['last_yaw'] = abs(wrap(p[2] - gyaw))
+
+    t_start = sim_now()
+    last_sample = 0.0
+    all_reached = True
+    for i, goal in enumerate(sc.get('mission') or []):
+        gx_w, gy_w, gyaw_w = float(goal['x']), float(goal['y']), float(goal.get('yaw', 0.0))
+        timeout = float(goal.get('timeout', 120.0))
+        mx, my, myaw = sp.to_map(gx_w, gy_w, gyaw_w)
+        msg = NavigateToPose.Goal()
+        msg.pose.header.frame_id = 'map'
+        msg.pose.header.stamp = node.get_clock().now().to_msg()
+        msg.pose.pose.position.x, msg.pose.pose.position.y = mx, my
+        msg.pose.pose.orientation.z, msg.pose.pose.orientation.w = math.sin(myaw / 2), math.cos(myaw / 2)
+        log(f'goal {i + 1}: world ({gx_w:.2f}, {gy_w:.2f}, yaw {gyaw_w:.2f}) = map ({mx:.2f}, {my:.2f}, yaw {myaw:.2f})')
+        t0 = sim_now()
+        fut = nav_client.send_goal_async(msg)
+        while not fut.done():
+            spin()
+        handle = fut.result()
+        status = 'rejected'
+        if handle is not None and handle.accepted:
+            res = handle.get_result_async()
+            while not res.done():
+                spin()
+                if sim_now() - last_sample > 0.2:
+                    sample_localization()
+                    last_sample = sim_now()
+                if sim_now() - t0 > timeout:
+                    cf = handle.cancel_goal_async()
+                    while not cf.done():
+                        spin()
+                    status = 'timeout'
+                    break
+            else:
+                status = {4: 'succeeded', 5: 'canceled', 6: 'aborted'}.get(res.result().status, str(res.result().status))
+        g = gt_world()
+        err = math.hypot(g[0] - gx_w, g[1] - gy_w)
+        yaw_err = abs(wrap(g[2] - gyaw_w))
+        reached = status == 'succeeded'
+        all_reached &= reached
+        report['goals'].append({'goal': {'x': gx_w, 'y': gy_w, 'yaw': gyaw_w}, 'status': status,
+                                'duration': round(sim_now() - t0, 2),
+                                'final_error': round(err, 3), 'final_yaw_error': round(yaw_err, 3),
+                                'tolerance': goal.get('tolerance')})
+        log(f'goal {i + 1}: {status} in {sim_now() - t0:.1f} s, error {err:.3f} m, yaw {yaw_err:.3f} rad')
+    sample_localization()
+    duration = sim_now() - t_start
+
+    stop(bag, 'bag record')
+
+    # ── Criteria ──
+    crit = sc.get('criteria') or {}
+    checks = {}
+
+    def check(key, value, limit, ok):
+        checks[key] = {'value': value, 'limit': limit, 'ok': bool(ok)}
+
+    if crit.get('goals_reached', True) and report['goals']:
+        check('goals_reached', all_reached, True, all_reached)
+    for i, g in enumerate(report['goals']):
+        tol = g['tolerance'] if g['tolerance'] is not None else crit.get('goal_tolerance')
+        if tol is not None:
+            check(f'goal_{i + 1}_error', g['final_error'], tol, g['final_error'] <= tol)
+    if 'max_localization_error' in crit and loc['samples']:
+        check('max_localization_error', round(loc['max'], 3), crit['max_localization_error'],
+              loc['max'] <= crit['max_localization_error'])
+    if 'final_localization_error' in crit and loc['samples']:
+        check('final_localization_error', round(loc['last'], 3), crit['final_localization_error'],
+              loc['last'] <= crit['final_localization_error'])
+    if 'max_duration' in crit:
+        check('max_duration', round(duration, 1), crit['max_duration'], duration <= crit['max_duration'])
+
+    node.destroy_node()
+    rclpy.shutdown()
+    return {'criteria': checks, 'duration': round(duration, 2),
+            'localization': {k: round(v, 4) if isinstance(v, float) else v for k, v in loc.items()},
+            'result': 'pass' if all(c['ok'] for c in checks.values()) else 'fail'}
+
+
+if __name__ == '__main__':
+    sys.exit(main())

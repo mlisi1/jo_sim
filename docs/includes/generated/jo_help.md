@@ -25,6 +25,8 @@ usage: ./jo [--domain N] [--partition NAME] <command> [args]
   worlds                    list the worlds (sim_worlds)
   check [args]              check_worlds, e.g. ./jo check --robot office_cpr
   ctl play|pause|step [N]|status   control the running simulation
+  scenario NAME [--record all|compressed] [--gui] [--rviz] | --list
+                            run a scenario headless and check it (exit 0 = pass)
 
 Examples:
   ./jo sim -w small_city -n gps

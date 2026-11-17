@@ -30,5 +30,5 @@ relative to its first message:
 <p>Plot: the ground truth vs GLIM vs the EKF trajectory, and the position error over time.</p>
 </div>
 
-!!! planned "Planned content (Phase E)"
-    A ready-made evaluation script and scenario pass criteria based on the ground-truth error.
+[Scenarios](scenarios.md) do this comparison for you, and report the maximum and final
+localization error.

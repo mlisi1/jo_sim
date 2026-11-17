@@ -1,0 +1,16 @@
+# Smoke test of local navigation: out along the clear corridor (+y) and back, with a turn-around.
+# Goals are in WORLD coordinates (the runner converts them to the map frame, which starts at spawn).
+description: office_cpr, 4.5 m out along +y and back (local navigation, GLIM + EKF + Nav2)
+world: office_cpr
+spawn: {x: 0.0, y: 0.0, yaw: 1.5708}
+nav: local
+record: none                 # none | all | compressed (the robot's profiles)
+settle: 3.0                  # [s, sim] wait after the stack is ready
+mission:
+  - {x: 0.0, y: 4.5, yaw: 1.5708, tolerance: 0.5, timeout: 90}
+  - {x: 0.0, y: 1.0, yaw: -1.5708, tolerance: 0.5, timeout: 120}
+criteria:
+  goals_reached: true
+  max_localization_error: 0.15     # [m] TF map->base_link vs ground truth, whole run
+  final_localization_error: 0.10   # [m] at the end
+  max_duration: 240                # [s, sim]

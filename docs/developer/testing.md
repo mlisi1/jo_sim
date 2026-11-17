@@ -24,5 +24,11 @@ Test runs use their own ROS domain and Gazebo partition, so they never disturb a
 - `/sim/ground_truth/odom`: the reference for localization tests ([Ground truth](../user-guide/ground-truth.md)).
 - `health_check` (Testudo): the topics against the robot interface. Experimental.
 
+## Scenarios
+
+`./jo --domain 77 --partition jo_sim_test scenario office_out_and_back` runs a mission headless and
+exits 0 on pass and 1 on fail (see [Scenarios](../user-guide/scenarios.md)). Use one after any
+change that can affect the robot's motion or localization.
+
 !!! planned "Planned content (Phase E)"
-    Scenario files, bags per run, CI smoke tests.
+    CI smoke runs. GitHub-hosted runners have no GPU, so they need a self-hosted runner.

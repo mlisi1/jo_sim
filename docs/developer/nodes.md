@@ -9,6 +9,7 @@
 | `realsense_tf` | Python | The static TF tree that the RealSense driver publishes below `<cam>_camera_link`. It respawns if it dies. |
 | `gui_follow` | bash | The Gazebo GUI camera follows the robot. |
 | `sim_control` | bash | play / pause / step / status, through the world's control service. |
+| `scenario` | Python | Runs a scenario: launches headless, sends Nav2 goals, checks the criteria against the ground truth, writes the report and the bag. |
 | `check_worlds`, `list_worlds` | Python | World checks, and the world list with their results. |
 
 !!! planned "Planned content (G3)"
