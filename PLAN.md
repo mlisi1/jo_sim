@@ -37,7 +37,7 @@ This work is about **updating the simulator**: Michele said navigation/EKF tunin
 - **Testudo** (`c99519c`): integrated but parked. See "DendROS and Testudo".
 - **Image** (`c99519c`): glim_ros2 is pinned through the `GLIM_ROS_COMMIT` build arg, currently `da3fae1`.
 
-**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 26, jo_navigation 9, jo_description 2.
+**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 27, jo_navigation 10, jo_description 2.
 The jo_sim submodule pointers already include jo_navigation `9e37e8e`.
 Push the submodules first, so the superproject never points to unpushed commits.
 
