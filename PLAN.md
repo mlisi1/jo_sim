@@ -24,8 +24,9 @@ This work is about **updating the simulator**: Michele said navigation/EKF tunin
   - `check_worlds --robot` and the physics-step cap: `500a0ae`
   - world sidecar yaml: `66908a4`
 - **Phase C** (2026-11-17, jo_sim commit "Phase C: ..."): `paused`, `rtf`, `sim_control`, host wrapper `./jo`
-  (DendROS TUI included). Michele tried it: "really good". `namespace` / `robot_name` deferred
+  (DendROS TUI included). Michele tried it: "really good". `namespace` / `robot_name` not planned
   (multi-robot), see "Phase C" below.
+- **D2 ground truth** (2026-11-17): `/sim/ground_truth/odom`, see "Phase D" below.
 - **RViz clouds as points** (Michele's preference): `sim.rviz` and jo_navigation `navigation.rviz`
   (`9e37e8e`) use `Style: Points`, 3 px, instead of Flat Squares.
 - Velodyne emulation (4c)
@@ -36,7 +37,7 @@ This work is about **updating the simulator**: Michele said navigation/EKF tunin
 - **Testudo** (`c99519c`): integrated but parked. See "DendROS and Testudo".
 - **Image** (`c99519c`): glim_ros2 is pinned through the `GLIM_ROS_COMMIT` build arg, currently `da3fae1`.
 
-**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 25, jo_navigation 9, jo_description 1.
+**Nothing is pushed.** Commits ahead of `origin/dev`: jo_sim 26, jo_navigation 9, jo_description 2.
 The jo_sim submodule pointers already include jo_navigation `9e37e8e`.
 Push the submodules first, so the superproject never points to unpushed commits.
 
@@ -57,19 +58,12 @@ Push the submodules first, so the superproject never points to unpushed commits.
   - The glim_ros2 session (`~/glim_ros2`) coordinates GPU slots through SendMessage.
 
 ### Next session checklist
-1. **D2 ground truth** (`/sim/ground_truth/odom`), next. It is small, and it would replace the slow
-   `gz model -p` polling in the probes. Sim-only: nothing in the stack may consume it.
-2. **Open questions for Michele** (asked on 2026-11-17, not answered yet):
-   - **GLIM map auto-save in the sim.** Today GLIM saves only on `save_map` (to `saved_maps/<date_time>/`
-     on the host). On exit it dumps to `/tmp/dump` in the container, which is overwritten and lost.
-     Proposal: a sim-only launch argument (`glim_common.py` is shared with the robot) so each exit
-     dump goes to `saved_maps/sim_<date_time>/`. Default on or off still to be decided.
-   - **`TERM` in `compose.yaml`** (`TERM=${TERM:-xterm-256color}`), so a plain
-     `docker compose exec jo-sim bash` also gets the DendROS TUI. Needs the container recreated:
-     do it only when Michele has no sim running.
-   - **DendROS bug** (Michele's repo): with 8 colours its TUI crashes in `init_pair` and falls back to
-     classic silently. Offer an issue or a patch.
-   - `namespace` / `robot_name`: confirm they stay deferred (see "Phase C").
+1. **D2 ground truth: done** (2026-11-17). Next: use it in probes instead of `gz model -p`.
+2. **Questions of 2026-11-17, answered:**
+   - **GLIM map auto-save: no** (Michele, 2026-11-17: `save_map` from the shell is enough).
+   - **`TERM` in `compose.yaml`: dropped** (Michele, 2026-11-17). `./jo` passes the host `TERM`.
+   - **DendROS 8-colour bug:** note left in `~/DendROS/NOTE_tui_8_color_terminals.md` (2026-11-17).
+   - **`namespace` / `robot_name`: not planned** (Michele, 2026-11-17: no multi-robot needed).
 3. **`check_worlds --robot` over all 51 worlds**, when the GPU is free: `check_worlds --robot`
    inside the container, ~70 s per world. Then look at `sim_worlds`.
 4. **Phases E, F, then D3 and track re-tuning.** Also the RTAB-Map build check (`BUILD_RTABMAP=true`,
@@ -414,8 +408,8 @@ Findings:
     TUI then raises `ValueError: Color number is greater than COLORS-1 (7)` in `init_pair` and silently
     falls back to the classic output. That is a DendROS bug (it should handle 8-colour terminals),
     and it also hits a plain `docker compose exec jo-sim bash`.
-- **Deferred: `namespace` and `robot_name`.** They only matter for several robots, and the robot has
-  neither:
+- **Not planned: `namespace` and `robot_name`** (Michele, 2026-11-17: no multi-robot needed). They
+  only matter for several robots, and the robot has neither:
   - the stack (jo_navigation) is not namespaced;
   - the Gazebo sensor topics (`imu`, `gnss`, `<cam>_camera`, `velodyne_points`) are global names in
     the jo_description `<gazebo>` tags;
@@ -431,10 +425,20 @@ Findings:
   per-point `time` fields and end-of-sweep stamping (GLIM deskewing depends on it); RealSense
   depth encoding (16UC1 mm vs Gazebo 32FC1 m) to be evaluated.
 - **D2 odometry**: the robot has none, so `TrackedVehicle` odometry stays out of the ROS interface
-  (no topic, no TF). Add a sim-only ground truth (`/sim/ground_truth/odom`, OdometryPublisher)
-  that nothing in the stack consumes — used to evaluate GLIM / EKF / RTAB-Map
-  (drift, end-of-mission error, upstream vs fork glim_ros2, `map_odom_mode:=external` consistency,
-  deskew with/without per-point times).
+  (no topic, no TF). **Ground truth: done (2026-11-17).**
+  - `OdometryPublisher` in a sim-only `<gazebo>` tag of `jo_main.urdf.xacro` (jo_description;
+    joints and origins untouched), bridged by `config/bridge/core.yaml`.
+  - `/sim/ground_truth/odom`, `nav_msgs/Odometry`, 100 Hz, `world` -> `base_link`, twist in
+    `base_link`. The plugin's TF (`/sim/ground_truth/tf`) is not bridged. Explicit topics: the
+    plugin's default `/model/jo/odometry` is TrackedVehicle's topic.
+  - Verified (spawn x 2, y -1, yaw 0.7): world-frame pose (not relative to spawn), identical to
+    `gz model -p` to the mm; ~99.5 Hz; twist 0.500 m/s on a 0.5 m/s command.
+  - Nothing in the stack may consume it. Use it to evaluate GLIM / EKF / RTAB-Map (drift,
+    end-of-mission error, upstream vs fork glim_ros2, `map_odom_mode:=external` consistency,
+    deskew with/without per-point times). GLIM's frames start at the spawn pose: compare
+    relative to the first ground-truth message.
+  - **Track finding (for the re-tuning below), one run:** a straight 0.5 m/s command for 4 s turned
+    the yaw 0.70 -> 1.06 rad, and a 0.5 rad/s turn command gave 0.74 rad/s.
 - **D3 dynamic obstacles**, declared in the world sidecar and injected by the preprocessor,
   toggled with `obstacles:=true|false`:
   - *actors*: animated people on scripted waypoints (realistic, no physics);
@@ -447,7 +451,8 @@ Findings:
     - {type: person, path: [[2,0],[2,6],[-2,6]], speed: 1.2, loop: true}
     - {type: box, size: [0.5,0.5,1.0], path: [[5,-3],[5,3]], speed: 0.6, start_delay: 10}
   ```
-- Track model re-tuning after the Bunker CAD update.
+- Track model re-tuning after the Bunker CAD update (see the D2 track finding: drift on straight
+  commands, yaw rate 1.5x the command). Measure it with the ground truth.
 
 ## Phase E — Testing workflow
 

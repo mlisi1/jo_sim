@@ -144,6 +144,9 @@ GPS localization in the sim:
 - **Participant limit:** the CycloneDDS config allows up to 100 participants per domain (default 32,
   too few for the full GPS stack).
 
+#### Ground truth (simulation only)
+`/sim/ground_truth/odom` (`nav_msgs/Odometry`, 100 Hz) is the true pose of `base_link` in the Gazebo world frame (`world` -> `base_link`, no TF), with the twist in `base_link`. It is not part of the robot's interface: nothing in the stack may consume it. Use it to evaluate GLIM, the EKF or RTAB-Map. GLIM's `map`/`odom` start at the spawn pose, so compare against the ground truth relative to its first message.
+
 #### Topic health (Testudo, experimental)
 `health` (live TUI) and `health_check` (one-shot report) check the topics against `jo_sim/config/testudo.yaml`, the robot interface the simulator must expose. Not reliable on the full stack yet (see PLAN.md).
 

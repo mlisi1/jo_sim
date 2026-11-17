@@ -8,3 +8,11 @@
   ros_type_name: "geometry_msgs/msg/Twist"
   gz_type_name: "gz.msgs.Twist"
   direction: ROS_TO_GZ
+
+# Simulation only: ground truth of base_link in the Gazebo world frame (OdometryPublisher in
+# jo_description). Not part of the robot's interface: nothing in the stack may consume it.
+- ros_topic_name: "/sim/ground_truth/odom"
+  gz_topic_name: "/sim/ground_truth/odom"
+  ros_type_name: "nav_msgs/msg/Odometry"
+  gz_type_name: "gz.msgs.Odometry"
+  direction: GZ_TO_ROS
