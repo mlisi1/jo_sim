@@ -1,6 +1,7 @@
 # Contributing
 
-- **Branches:** work on `dev` in every repository.
+- **Branches:** work on `dev` in every repository. After a clone the submodules are on a detached
+  HEAD: run `git -C jo_description switch dev` (and the same for `jo_navigation`) before committing.
 - **Commits:** few, grouped by topic, one per repository. Commit the submodule first, then
   jo_sim with the pointer bump.
 - **Push order:** jo_description, jo_navigation, then jo_sim.
@@ -22,7 +23,9 @@ python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt
 - Tooltips for abbreviations come from `docs/includes/abbreviations.md`.
 - **Generated tables** (launch arguments, bridged topics, `./jo help`) live in
   `docs/includes/generated/`, and the pages include them. Don't edit them by hand: with the container
-  up, run `python3 docs/gen/gen_tables.py` and commit the result. Do it whenever a launch argument,
+  up, run `python3 docs/gen/gen_tables.py` and commit the result. The generators find this
+  checkout's container by themselves (`JO_CONTAINER` overrides it). The media scripts expect
+  `jo_sim-jo-sim-1`, that is a clone in a folder named `jo_sim`. Do it whenever a launch argument,
   a bridge config or `./jo` changes.
 - **Measured tables** (every topic with its rate and QoS, the TF tree, the node parameters) come from
   `python3 docs/gen/gen_topics.py`. It starts a headless simulator on domain 79, so it needs the GPU

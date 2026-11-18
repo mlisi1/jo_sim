@@ -6,8 +6,12 @@ Test runs use their own ROS domain and Gazebo partition, so they never disturb a
 
 ```bash
 ./jo --domain 77 --partition jo_sim_test sim --headless --no-rviz
+./jo --domain 77 --partition jo_sim_test shell   # ros2 commands on the sandbox's domain
 ./jo --domain 77 --partition jo_sim_test stop
 ```
+
+A plain `./jo shell` opens on the container's default domain, so it doesn't see the sandbox. `stop`
+can report two launches for one simulation, and waits up to 30 s for them to exit.
 
 `check_worlds --robot` uses its own partition, and domain 78.
 

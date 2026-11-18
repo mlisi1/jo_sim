@@ -44,8 +44,9 @@ Full reference: [Configuration files](../reference/configuration.md).
 ```
 
 `./jo` runs `docker compose` for you; `docker compose up --build` works too. The first build
-compiles GTSAM, gtsam_points (CUDA), GLIM, glim_ros2 and the RGL lidar plugin. It takes a while,
-and the image is about 12 GB.
+compiles GTSAM, gtsam_points (CUDA), GLIM, glim_ros2 and the RGL lidar plugin. It takes about
+an hour, and the image is about 12 GB. Compose may first print `pull access denied` for the `jo-sim`
+image: the image is local only, and the build then starts by itself.
 
 At every start, the container rebuilds the mounted packages (`jo_description`, `jo_sim`,
 `jo_navigation`, `testudo`) with colcon. Shells opened in the meantime wait until it is done.

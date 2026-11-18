@@ -11,7 +11,8 @@ Pass arguments as `name:=value`, to `ros2 launch` or after `./jo sim`.
 
 !!! warning "Different sensor defaults"
     `sim_bringup` uses the robot's defaults: `imu` and `lidar` on, `gnss`, `front_cam` and
-    `back_cam` off. `launch_sim` (the `sim` alias) turns every sensor on.
+    `back_cam` off. `launch_sim` (the `sim` alias) turns every sensor on. `./jo sim` passes
+    `front_cam:=true back_cam:=true`, and `gnss:=true` unless it runs with `-n local`.
 
 ## Robot flags (same as `jo_bringup`)
 

@@ -11,9 +11,9 @@ The numbers depend on the machine, so the table is pasted into the page with the
 not included as a generated file.
 """
 import argparse, json, pathlib, subprocess, sys
+from container import container
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-CONTAINER = 'jo_sim-jo-sim-1'
 
 
 def table(lines):
@@ -45,7 +45,7 @@ def main():
         with open(ROOT / 'docs' / 'gen' / 'perf_probe.py') as f:
             text = subprocess.run(['docker', 'exec', '-i', '-e', f'ROS_DOMAIN_ID={a.domain}',
                                    '-e', f'GZ_PARTITION={a.partition}', '-e', f'PERF_WORLD={a.world}',
-                                   CONTAINER, 'bash', '-c', cmd], stdin=f, stdout=subprocess.PIPE,
+                                   container(), 'bash', '-c', cmd], stdin=f, stdout=subprocess.PIPE,
                                   check=True, text=True).stdout
     print(table([json.loads(l) for l in text.splitlines() if l.strip()]))
 

@@ -15,7 +15,7 @@ Order: **A → DendROS/Testudo → B → C → E → F → D**.
 
 ## Where we left off (2026-11-18, docs review done)
 
-**Implementation is finished; the docs are finished except for the G5 review.** G1–G4 are done and
+**Implementation and docs are finished, G5 included.** G1–G4 are done and
 Michele approved the media and the docs on 2026-11-18, after a final docs-versus-code review. All of
 it is pushed on `dev`. `dev` is merged into `main` only when everything is finished (Michele); the
 merge also publishes the docs site.
@@ -68,8 +68,10 @@ merge also publishes the docs site.
    - `vslam:=true` checked in office_cpr: 7.3 m, visual odometry 11 cm off at the end (12.5 cm at
      most), never lost; no global loop closure on this short route.
    - Troubleshooting: Nav2 far goals and the EKF startup hang (cause still unknown).
-2. **G5, the review:** a fresh agent with only the site sets up the sim and adds a sensor; Michele
-   reads it as a new user. Then the merge `dev` → `main` (Michele) and Settings → Pages → Source:
+2. **G5, the review:** the fresh-agent half is done (2026-11-18): install, local navigation and adding
+   a camera all worked, and its findings are fixed in the docs (the generators now find the checkout's
+   own container). Not covered: a from-scratch image build (layers were cached) and GUI steps. Michele
+   read the site and approved it on 2026-11-18, so G5 is done. Then the merge `dev` → `main` (Michele) and Settings → Pages → Source:
    GitHub Actions.
 3. **On hold: testudo threshold migration** (Michele 2026-11-18: wait, testudo is still in
    development). Testudo dev (d0d3aa6, 1bdd444; unpushed when last checked) splits severity

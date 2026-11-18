@@ -16,25 +16,80 @@ more.
     - the rate and resolution of the real driver's configuration (jo-zotac `jo_bringup/config/`);
     - noise through the `gz_noise` macro, with the values in `sim_noise.xacro`, so that
       `sim_noise:=false` switches it off;
-    - a Gazebo topic name, and `<gz_frame_id>` set to the frame the driver stamps.
+    - a Gazebo topic name, and `<gz_frame_id>` set to the frame the driver stamps. Images use an
+      optical frame (Z forward, X right). If the frame isn't in the URDF, it comes from driver
+      emulation, as `realsense_tf` does for the RealSense.
 3. **The bridge:** a new `jo_sim/config/bridge/<flag>.yaml`.
     - If the real driver publishes the Gazebo output unchanged, use the real ROS topic.
     - Otherwise use `/sim/<...>_raw`, and let driver emulation produce the real topic (next step).
     - Add the file under its flag in `SENSOR_BRIDGES` (`launch/launch_sim.launch.py`).
-    - Images go through `ros_gz_image` (see the cameras in `launch_sim`), so the transports exist.
+    - Images go through `ros_gz_image`, so the transports exist. See the example below.
+    - Run `./jo build`: a new file in `config/` isn't found until then. The launch keeps running
+      and only logs `Could not parse config`.
 4. **Driver emulation**, if the driver does more than read the sensor: encodings, extra fields, TF
    frames, range limits. Add a node in `jo_sim/src` or `jo_sim/scripts`, and start it in
    `launch/driver_emulation.launch.py` under the sensor's flag. Existing examples:
    `velodyne_emulation`, `depth_to_mm`, `frame_restamp`, `realsense_tf`.
-5. **The flag:** the robot's flag name and default in `sim_bringup.launch.py` (as in `jo_bringup`),
-   and the same flag in `launch_sim.launch.py`.
-6. **The interface check:** the topic, its rate and frame in `jo_sim/config/testudo.yaml`.
+5. **The flag:** `SENSOR_BRIDGES` already declares it in `launch_sim.launch.py`, always with default
+   `true`. In `sim_bringup.launch.py`, declare it with `flag(...)`, using the robot's name and default
+   (as in `jo_bringup`), and add it to the tuple of flags passed on to `launch_sim`. Without that, the
+   sensor is on whatever the robot's default is.
+6. **The interface check** in `jo_sim/config/testudo.yaml`: the topic and its rate under `topics:`,
+   and the frame as a `{parent: ..., child: ...}` pair under `tf:`.
 7. **Docs:** a row in [Sensors](../user-guide/sensors.md) and
    [Topics and frames](../reference/topics-frames.md). Run `python3 docs/gen/gen_tables.py` for the
    argument and bridge tables, and `python3 docs/gen/gen_topics.py` for the measured topic table.
+   For a sensor that is off by default, append its flag: `python3 docs/gen/gen_topics.py my_cam:=true`.
+   `gen_topics.py` measures every topic again, so the other rates change slightly in the diff. Finish
+   with `mkdocs build --strict`.
 
-**Check:** `ros2 topic hz`, `ros2 topic echo --once` (frame, encoding, fields) against a bag of the
-real robot, then `health`.
+**Check:** in a [sandbox shell](testing.md#the-sandbox), `ros2 topic hz` and `ros2 topic echo --once`
+(frame, encoding, fields). Compare them with a bag of the real robot, or with the driver's
+configuration if you have no bag (the robot's maintainer has both). Then run the full stack
+(`-n local`) with `health`, or `health_headless` without a terminal: every topic should be green.
+
+??? example "A plain colour camera"
+    The Gazebo sensor, in the xacro of the link it is mounted on:
+
+    ```xml
+    <gazebo reference="my_link">
+      <sensor name="my_camera" type="camera">
+        <gz_frame_id>my_camera_optical_frame</gz_frame_id>
+        <always_on>true</always_on>
+        <update_rate>15</update_rate>
+        <camera name="my_camera">
+          <horizontal_fov>1.50</horizontal_fov>
+          <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+          <clip><near>0.1</near><far>50</far></clip>
+          <xacro:gz_noise stddev="${camera_stddev}"/>
+        </camera>
+        <topic>my_camera/image</topic>
+      </sensor>
+    </gazebo>
+    ```
+
+    Gazebo publishes `camera_info` next to the `<topic>`, here on `my_camera/camera_info`. Bridge it
+    in `jo_sim/config/bridge/my_cam.yaml`:
+
+    ```yaml
+    - ros_topic_name: "my_camera/camera_info"
+      gz_topic_name: "my_camera/camera_info"
+      ros_type_name: "sensor_msgs/msg/CameraInfo"
+      gz_type_name: "gz.msgs.CameraInfo"
+      direction: GZ_TO_ROS
+    ```
+
+    The image goes through `ros_gz_image`, in `launch_sim.launch.py`:
+
+    ```python
+    bridges.append(Node(
+        package='ros_gz_image', executable='image_bridge', name='sim_bridge_my_cam_image',
+        arguments=['my_camera/image'],
+        remappings=[(f'/my_camera/image{t}', f'/my_camera/image_raw{t}') for t in IMAGE_TRANSPORTS],
+        parameters=[{'use_sim_time': True}],
+        condition=IfCondition(LaunchConfiguration('my_cam')),
+    ))
+    ```
 
 ## Add a patch to the world preprocessor
 

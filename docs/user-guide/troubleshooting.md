@@ -12,7 +12,7 @@
 ??? failure "Nav2 aborts a far goal at once"
     In local navigation Nav2 has no prior map, only rolling costmaps. A `/goal_pose` 25 m away is
     aborted immediately ("Goal failed"), most likely because it lies outside the global costmap.
-    Send goals about 8 m apart instead. This is the stack's behaviour, not the simulator's.
+    Send goals within about 8 m of the robot instead. This is the stack's behaviour, not the simulator's.
 
 ??? failure "`-n local`: Nav2 never activates, the EKF stays at `Waiting for clock to start...`"
     Seen occasionally in small_city: the EKF publishes nothing, so there is no `odom` frame and

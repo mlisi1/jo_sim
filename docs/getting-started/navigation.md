@@ -18,7 +18,14 @@ the robot (jo-zotac).
 ```
 
 Wait for `Managed nodes are active` in the output, then send a goal with RViz's
-**2D Goal Pose** tool.
+**2D Goal Pose** tool. Without RViz, publish it from `./jo shell`, in the `map` frame:
+
+```bash
+ros2 topic pub --once -w 1 /goal_pose geometry_msgs/msg/PoseStamped \
+  "{header: {frame_id: map}, pose: {position: {x: 0.0, y: 3.0}, orientation: {z: 0.7071, w: 0.7071}}}"
+```
+
+To run a whole mission headless and check the result, use a [scenario](../user-guide/scenarios.md).
 
 <figure class="jo-media">
 <video src="../../assets/videos/nav_local.mp4" poster="../../assets/videos/nav_local.jpg" autoplay muted loop playsinline></video>
@@ -29,7 +36,7 @@ right. The goals go to <code>/goal_pose</code>, as the 2D Goal Pose tool does.</
 
 !!! tip "Keep goals close"
     Nav2 runs without a prior map here and aborts goals far outside its rolling costmap. Send goals
-    about 8 m apart (see [Troubleshooting](../user-guide/troubleshooting.md)).
+    within about 8 m of the robot (see [Troubleshooting](../user-guide/troubleshooting.md)).
 
 The lidar starts 2 s (sim time) after spawn. The robot is spawned slightly above the ground and
 drops, and GLIM must initialize with the robot at rest.

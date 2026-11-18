@@ -17,9 +17,9 @@ repository root, with the container up:
 --no-shoot rewrites the catalogue from the metadata and the thumbnails already in docs/assets.
 """
 import argparse, json, os, pathlib, subprocess, sys
+from container import container
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-CONTAINER = 'jo_sim-jo-sim-1'
 STATUS = ROOT / 'user_worlds' / '.cache' / 'world_status.json'
 THUMBS = ROOT / 'docs' / 'assets' / 'images' / 'worlds'
 OUT = ROOT / 'docs' / 'includes' / 'generated' / 'world_catalogue.md'
@@ -47,14 +47,14 @@ def probe(worlds, a):
     cmd = ('source /opt/ros/jazzy/setup.bash; source /home/ros/install/setup.bash; '
            'rm -rf /tmp/jo_sim/thumbs; python3 - "$@"; rc=$?; ros2 daemon stop >/dev/null 2>&1; exit $rc')
     with open(ROOT / 'docs' / 'gen' / 'thumb_probe.py') as f:
-        text = subprocess.run(['docker', 'exec', '-i', *env, CONTAINER, 'bash', '-c', cmd, 'probe', *worlds],
+        text = subprocess.run(['docker', 'exec', '-i', *env, container(), 'bash', '-c', cmd, 'probe', *worlds],
                               stdin=f, stdout=subprocess.PIPE, check=True, text=True).stdout
     results = [json.loads(l) for l in text.splitlines() if l.strip()]
     if not a.no_shoot:
         THUMBS.mkdir(parents=True, exist_ok=True)
         for r in results:
             if 'thumb' in r:
-                subprocess.run(['docker', 'cp', f"{CONTAINER}:{r['thumb']}", str(THUMBS / f"{r['world']}.jpg")],
+                subprocess.run(['docker', 'cp', f"{container()}:{r['thumb']}", str(THUMBS / f"{r['world']}.jpg")],
                                check=True, capture_output=True)
     return results
 
