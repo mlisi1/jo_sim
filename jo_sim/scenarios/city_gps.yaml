@@ -1,0 +1,17 @@
+# Smoke test of GPS navigation: west along the street to the crossroads, then north.
+# Goals are in WORLD coordinates (the runner converts them to the map frame, which starts at spawn).
+# The GPS stack's goal checker is position only (xy 0.5 m), so the final heading is not checked.
+description: small_city, 15 m west and 12 m north (GPS navigation, GLIM + EKF + navsat + Nav2)
+world: small_city
+spawn: {x: 0.0, y: 0.0, yaw: 3.1416}
+nav: gps
+record: none                 # none | all | compressed (the robot's profiles)
+settle: 10.0                 # [s, sim] wait after the stack is ready
+mission:
+  - {x: -15.0, y: 0.0, tolerance: 0.75, timeout: 90}
+  - {x: -15.0, y: 12.0, tolerance: 0.75, timeout: 90}
+criteria:
+  goals_reached: true
+  max_localization_error: 0.6      # [m] TF map->base_link vs ground truth, whole run
+  final_localization_error: 0.30   # [m] at the end (0.05 to 0.22 measured)
+  max_duration: 120                # [s, sim]

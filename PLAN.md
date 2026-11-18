@@ -58,6 +58,10 @@ merge also publishes the docs site.
   in the same commit as the feature; `mkdocs build --strict` must pass. Never `mkdocs gh-deploy`.
 
 ### Next session checklist (docs: the last media fixes, then G5)
+0. **GPS scenarios validated (2026-11-18):** new `city_gps` (small_city, 15 m west, 12 m north). 9 of 9
+   clean runs reached both goals (localization at most 0.43 m, 0.05 to 0.22 m at the end); world-to-map goals also checked at spawn yaw 0, 45° and 180°. Runner fix: a
+   `gz sim` that outlived `ros2 launch` is now killed, it had joined the next run on the partition.
+   The EKF startup hang (`Waiting for clock`, cause unknown, deferred) hit 1 of 13 clean starts.
 1. **Done (2026-11-18): the media fixes and the last docs gaps.**
    - GLIM video reshot in GLIM's own viewer (`shots/glim_viewer.py`: docs-only config copy and
      `imgui.ini`); `glim_city` now only feeds the ground truth plot.

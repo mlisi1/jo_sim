@@ -43,7 +43,7 @@ maintainer's decision, 2026-11-17).
 So, before pushing a change that can affect motion, localization or the robot interface, run by
 hand in a sandbox:
 
-1. `./jo --domain 77 --partition jo_sim_test scenario office_out_and_back` and `office_crossing`:
-   both must pass.
+1. `./jo --domain 77 --partition jo_sim_test scenario office_out_and_back`, `office_crossing` and `city_gps`:
+   all must pass.
 2. `health` on the full stack: every topic green.
 3. If you changed a world patch: `./jo check --robot` on the worlds it touches.

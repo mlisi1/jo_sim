@@ -93,8 +93,17 @@ criteria:
 or less means contact, because the chassis is 0.91 m long. `office_crossing` is the example: a
 person crossing the corridor at y = 3.
 
-!!! warning "GPS scenarios"
-    `nav: gps` sends goals in the `map` frame like `local`. It has not been validated yet.
+## GPS scenarios
+
+`city_gps` is the example: `./jo scenario city_gps` drives 15 m west and 12 m north in small_city.
+With `nav: gps`, goals are still written in world coordinates and sent to Nav2's `navigate_to_pose`
+in the `map` frame, as with `local`. The runner doesn't use `follow_gps_waypoints`.
+
+- **The final heading isn't checked.** The GPS stack's goal checker looks at the position only, with
+  a tolerance of 0.5 m, so Jo stops about 0.5 m from the goal, facing any direction. Keep each goal's
+  `tolerance` above that (`city_gps` uses 0.75 m).
+- **Spawn heading:** the conversion from world to `map` coordinates was checked at spawn yaw 0, 45°
+  and 180°.
 
 <figure class="jo-media">
 <video src="../../assets/videos/scenario.mp4" poster="../../assets/videos/scenario.jpg" autoplay muted loop playsinline></video>

@@ -26,7 +26,7 @@ jo_sim/                   the ROS package
   launch/                 sim_bringup, launch_sim, driver_emulation
   config/bridge/          ros_gz_bridge configs, one per sensor flag
   jo_sim/world_tools.py   world search, sidecars, preprocessor
-  scenarios/              office_out_and_back, office_crossing
+  scenarios/              office_out_and_back, office_crossing, city_gps
   scripts/                check_worlds, list_worlds, scenario, sim_control, gui_follow, realsense_tf
   src/                    velodyne_emulation, frame_restamp, depth_to_mm, waypoint_mover (C++)
   worlds/                 own worlds, external/ collection

@@ -182,6 +182,13 @@ def stop(proc, what, grace=20.0):
             log(f'{what} still running after {grace:.0f} s: SIGKILL')
             os.killpg(pg, signal.SIGKILL)
             proc.wait(timeout=10)
+        # ros2 launch can exit before its children: a gz sim left behind would join the next run
+        deadline = time.time() + grace
+        while time.time() < deadline:
+            os.killpg(pg, 0)
+            time.sleep(0.5)
+        log(f'{what}: processes left after {grace:.0f} s: SIGKILL')
+        os.killpg(pg, signal.SIGKILL)
     except ProcessLookupError:
         pass
 
