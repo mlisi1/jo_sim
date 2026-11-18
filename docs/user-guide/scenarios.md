@@ -63,6 +63,7 @@ criteria:
   final_localization_error: 0.10         # [m] at the end
   max_duration: 240                      # [s, sim] the whole mission
   min_obstacle_distance: 0.5             # [m] only with obstacles
+  goal_tolerance: 0.5                    # [m] for goals without their own tolerance
 ```
 
 - **Goals are in world coordinates**, like the spawn pose. GLIM's `map` frame starts at the spawn
@@ -71,7 +72,7 @@ criteria:
   Nav2 believes.
 - **`nav: local`** starts localization and navigation without the cameras, which is cheaper. Add
   `front_cam: true` (and so on) in `launch_args` to include them.
-- **Recording profiles** are the robot's (jo-zotac `record_all` / `record_compressed`), plus the
+- **Recording profiles** (see also [Recording bags](bags.md)) are the robot's (jo-zotac `record_all` / `record_compressed`), plus the
   sim-only raw sensor topics excluded. The ground truth is kept.
 
 ## Moving obstacles

@@ -93,12 +93,14 @@ Details for developers: [World preprocessor](../developer/world-preprocessor.md)
 obstacles:
   - name: walker                 # optional (obstacle_<n>)
     shape: person                # person (cylinder 0.25 x 1.7 m) | cylinder | box
+    # radius, height: [m] for person and cylinder (cylinder default 0.3 x 1.0); size: [x, y, z] for box
     waypoints: [[-2.5, 3.0], [2.5, 3.0]]   # world x y, at least 2
     speed: 0.6                   # [m/s]
     mode: pingpong               # pingpong | loop | once
     pause: 1.0                   # [s] at each waypoint
     delay: 0.0                   # [s, sim] before starting
     yield_distance: 1.2          # optional: stop while the robot is this close ahead
+    face_motion: true            # turn to face the direction of travel
     color: [0.9, 0.4, 0.1]
   - {shape: box, size: [0.6, 0.4, 1.0], waypoints: [[5, -3], [5, 3]], speed: 0.4, delay: 10}
 ```

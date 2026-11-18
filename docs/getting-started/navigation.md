@@ -27,6 +27,10 @@ RViz shows the local and global costmaps, the planned path (amber) and the lidar
 right. The goals go to <code>/goal_pose</code>, as the 2D Goal Pose tool does.</figcaption>
 </figure>
 
+!!! tip "Keep goals close"
+    Nav2 runs without a prior map here and aborts goals far outside its rolling costmap. Send goals
+    about 8 m apart (see [Troubleshooting](../user-guide/troubleshooting.md)).
+
 The lidar starts 2 s (sim time) after spawn. The robot is spawned slightly above the ground and
 drops, and GLIM must initialize with the robot at rest.
 

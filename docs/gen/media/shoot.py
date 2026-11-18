@@ -15,7 +15,7 @@ import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 HERE = pathlib.Path(__file__).resolve().parent
-CONTAINER = 'jo_sim-jo-sim-1'
+CONTAINER = os.environ.get('JO_MEDIA_CONTAINER', 'jo_sim-jo-sim-1')  # another one for image variants (RTAB-Map)
 DISPLAY, SCREEN = ':99', '3200x1800x24'
 CACHE = pathlib.Path.home() / '.cache' / 'jo_sim_media' / 'rig'
 RVIZ_SOURCES = {'sim': 'jo_sim/rviz/sim.rviz', 'nav': 'jo_navigation/rviz/navigation.rviz'}

@@ -57,7 +57,8 @@ At every container start, `entrypoint.sh` builds the mounted packages with colco
 ## glim_ros2 development
 
 Uncomment the glim_ros2 volume in `compose.yaml` and set `EXTRA_BUILD_PACKAGES=glim_ros` in `.env`:
-your checkout is rebuilt at every container start.
+your checkout is rebuilt at every container start. The volume mounts `~/glim_ros2`; set
+`GLIM_ROS_DEV_PATH` in `.env` to use another folder.
 
 !!! note "Not planned"
     - **A headless compose setup for CI:** the simulator has no CI (see [Testing](testing.md#ci)).

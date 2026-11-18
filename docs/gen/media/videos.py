@@ -10,6 +10,13 @@ import os, sys
 
 from compose import *  # noqa: F403
 
+GAZEBO, RVIZ, GLIM_VIEW, CAMERA = ('Gazebo', CYAN), ('RViz', AMBER), ("GLIM's viewer", GREEN), ('Front camera', MUTED)
+
+
+def view(kind, x=None, y=28, **kw):
+    """The stamp naming a view."""
+    return st(kind[0], x, y, dot=kind[1], **kw)
+
 
 def first_run():
     """Shots: office_drive."""
@@ -19,9 +26,9 @@ def first_run():
     rv = frames('office_drive', 'xvfb').cut(drive0)
     front = frames('office_drive', 'front', size=(640, 360)).cut(drive0)
     body = split(g, rv, ax_b=0.2)
-    body = overlay(body, lambda d, i: (chip(d, 'Gazebo', 28, 28, dot=CYAN), chip(d, 'RViz', W // 2 + 28, 28, dot=AMBER)))
-    body = pip(body, front, corner='tr', width=440, label='front camera')
+    body = pip(body, front, corner='tr', width=440)
     body = caption(body, './jo sim', 'Teleop on /cmd_vel; lidar and camera clouds in RViz', n_in=15)
+    body = stamps(body, [view(GAZEBO, 28), view(RVIZ, W // 2 + 28), view(CAMERA, 1458, 50, size=22)])
     return body.fade(10, 10)
 
 
@@ -30,7 +37,7 @@ def nav_local():
     rec = [r for r in records('nav_local') if 'n' in r]
     rv = frames('nav_local', 'xvfb')
     g = frames('nav_local', size=(960, 540))
-    body = pip(rv, g, corner='tr', width=620, label='Gazebo')
+    body = pip(rv, g, corner='tr', width=620)
     goal_of = [r.get('goal', 0) for r in rec]
     labels = ['Goal 1: 4.5 m ahead', 'Goal 2: back, facing the start']
 
@@ -38,7 +45,7 @@ def nav_local():
         chip(d, labels[goal_of[min(i, len(goal_of) - 1)]], 36, 36, size=30, dot=AMBER)
     body = overlay(body, marks)
     body = caption(body, './jo sim -n local', 'GLIM + EKF localization, Nav2 (mapless); goals on /goal_pose')
-    return body.speed(1.6).fade(10, 12)
+    return stamps(body.speed(1.6), [view(RVIZ, 36, 104), view(GAZEBO, 1278, 50, size=22)]).fade(10, 12)
 
 
 def sim_control():
@@ -89,8 +96,8 @@ def sim_control():
     left = Clip(n, lambda i: g(src[min(i, len(src) - 1)]))
     term = terminal(n, lines, size=(W - 1152, H), title='~/jo_sim', font_size=25)
     body = split(left, term, ratio=0.6, gap=0)
-    body = overlay(body, lambda d, i: chip(d, 'Gazebo, Jo driving on /cmd_vel', 28, 28, dot=CYAN))
-    return caption(body, 'Pause, step, play', 'Paused, Jo freezes mid-motion; step 500 = 0.5 s of sim time').fade(8, 12)
+    body = caption(body, 'Pause, step, play', 'Paused, Jo freezes mid-motion; step 500 = 0.5 s of sim time')
+    return stamps(body, [st('Gazebo, Jo driving on /cmd_vel', 28, dot=CYAN)]).fade(8, 12)
 
 
 def out_spans(out):
@@ -130,10 +137,9 @@ def scenario():
     left = Clip(n, lambda i: run(i - head))
     term = terminal(n, lines, size=(W - 1152, H), title='~/jo_sim', font_size=22)
     body = split(left, term, ratio=0.6, gap=0)
-    body = overlay(body, lambda d, i: (chip(d, 'office_crossing', 28, 28, dot=CYAN),
-                                       chip(d, f'{k}×', 330, 28, dot=None) if head <= i < head + len(run) else None))
     body = caption(body, 'Scenarios', "A walker crosses Jo's path and yields; verdict from the ground truth")
-    return body.fade(8, 12)
+    return stamps(body, [st('Gazebo, office_crossing', 28, dot=CYAN),
+                         st(f'{k}×', frames=(head, head + len(run)))]).fade(8, 12)
 
 
 def tag(clip, text, sub=None):
@@ -142,7 +148,7 @@ def tag(clip, text, sub=None):
 
 
 def hero():
-    """Shots: office_drive, nav_local, nav_gps, scenario, glim_city. ~25 s, loops."""
+    """Shots: office_drive, nav_local, nav_gps, scenario, glim_viewer. ~25 s, loops."""
     rec = records('office_drive')
     drive0 = next(r['n'] for r in rec if r.get('part') == 'drive')
     orbit = frames('office_drive').cut(10, drive0)
@@ -150,16 +156,21 @@ def hero():
     nav = pip(frames('nav_local', 'xvfb'), frames('nav_local', size=(960, 540)), corner='tr', width=560)
     gps = frames('nav_gps', crop=GPS_CROP)
     scen = frames('scenario').speed(3)
-    glim = frames('glim_city', 'xvfb')
+    glim = frames('glim_viewer', 'xvfb')
     s = FPS
     clips = [
         card(int(2.6 * s), 'Jo, simulated', 'The jo-zotac robot in Gazebo Harmonic, with the real ROS interface'),
-        tag(orbit.speed(1.2).cut(0, int(3.2 * s)), 'Gazebo Harmonic', 'The real robot\'s URDF and TFs'),
-        tag(drive.cut(0, int(3.6 * s)), 'The real sensors', 'VLP-16 lidar, two RealSense D456, Xsens IMU and GNSS'),
-        tag(nav.speed(2.5).cut(0, int(3.6 * s)), 'The robot\'s navigation stack', 'GLIM + EKF localization, Nav2'),
-        tag(gps.speed(2).cut(0, int(3.4 * s)), 'GPS waypoints', 'In georeferenced worlds'),
-        tag(glim.cut(len(glim) * 2 // 3, len(glim) * 2 // 3 + int(3.0 * s)), 'GLIM maps', 'Built live, saved with save_map'),
-        tag(scen.cut(len(scen) // 3, len(scen) // 3 + int(3.0 * s)), 'Scenarios', 'Missions with pass/fail criteria'),
+        stamps(tag(orbit.speed(1.2).cut(0, int(3.2 * s)), 'Gazebo Harmonic', 'The real robot\'s URDF and TFs'),
+               [view(GAZEBO, 28)]),
+        stamps(tag(drive.cut(0, int(3.6 * s)), 'The real sensors', 'VLP-16 lidar, two RealSense D456, Xsens IMU and GNSS'),
+               [view(GAZEBO, 28), view(RVIZ, W // 2 + 28)]),
+        stamps(tag(nav.speed(2.5).cut(0, int(3.6 * s)), 'The robot\'s navigation stack', 'GLIM + EKF localization, Nav2'),
+               [view(RVIZ, 28), view(GAZEBO, 1338, 50, size=22)]),
+        stamps(tag(gps.speed(2).cut(0, int(3.4 * s)), 'GPS waypoints', 'In georeferenced worlds'), [view(GAZEBO, 28)]),
+        stamps(tag(glim.cut(len(glim) * 2 // 3, len(glim) * 2 // 3 + int(3.0 * s)), 'GLIM maps', 'Built live, saved with save_map'),
+               [view(GLIM_VIEW, 330)]),
+        stamps(tag(scen.cut(len(scen) // 3, len(scen) // 3 + int(3.0 * s)), 'Scenarios', 'Missions with pass/fail criteria'),
+               [view(GAZEBO, 28)]),
         card(int(3.0 * s), 'Jo, simulated', 'One container, one command', code='./jo sim'),
     ]
     return concat(*clips, xfade=10)
@@ -193,24 +204,34 @@ def nav_gps():
             d.text((W - tw - 66, 48), text, font=f, fill=CYAN_300)
     body = overlay(g, hud)
     body = caption(body, './jo sim -w small_city -n gps', 'Two GPS waypoints to follow_gps_waypoints (2× speed)')
-    return body.fade(10, 12)
+    return stamps(body, [view(GAZEBO, 36, 104)]).fade(10, 12)
 
 
 def glim_map():
-    """Shots: glim_city (3x time-lapse, played at 4.5x). RViz main (GLIM's map by height, the current scan in cyan,
-    Nav2's path in amber), Gazebo top right."""
-    start = 165        # GLIM publishes its first map at frame ~192 (its first submap): skip most of the wait
-    body = pip(frames('glim_city', 'xvfb').cut(start), frames('glim_city', size=(960, 540)).cut(start),
+    """Shots: glim_viewer (3x time-lapse, played at 4.5x). GLIM's own viewer, Gazebo top right."""
+    start = 30         # the viewer shows only the first scans before this
+    body = pip(frames('glim_viewer', 'xvfb').cut(start), frames('glim_viewer', size=(960, 540)).cut(start),
                corner='tr', width=480).speed(1.5)
-    body = caption(body, './jo sim -w small_city -n local', "GLIM's map growing as Nav2 drives Jo through the city (4.5× speed)")
-    return body.fade(10, 12)
+    body = caption(body, './jo sim -w small_city -n local --glim-view', "GLIM's map growing as Nav2 drives Jo through the city (4.5× speed)")
+    return stamps(body, [view(GLIM_VIEW, 330), view(GAZEBO, 1418, 50, size=22)]).fade(10, 12)
+
+
+def rtabmap():
+    """Shots: rtabmap (2x time-lapse: every other frame), in the BUILD_RTABMAP=true image. RViz main; on
+    the right Gazebo, RTAB-Map's own visualizer and the front camera."""
+    body = pip(frames('rtabmap', 'xvfb'), frames('rtabmap', size=(960, 540)), corner='tr', width=520)
+    body = pip(body, frames('rtabmap', 'viz', size=(1600, 1000)), width=700, at=(1184, 354))
+    body = pip(body, frames('rtabmap', 'front', size=(640, 360)), corner='br', width=400)
+    body = caption(body, './jo sim -n local vslam:=true', "RTAB-Map's grid and graph as Nav2 drives Jo out and back (2× speed)")
+    return stamps(body, [st('RViz, RTAB-Map grid and graph', 28, dot=AMBER), view(GAZEBO, 1378, 50, size=22),
+                         st('rtabmap_viz', 1198, 368, dot=GREEN, size=22), view(CAMERA, 1498, 833, size=22)]).fade(10, 12)
 
 
 # per-video encoder settings: dense point clouds compress badly at the default CRF 28
 ENCODE = {'glim_map': {'crf': 34, 'size': (1280, 720)}, 'hero': {'crf': 31}}
 
 
-VIDEOS_ = {'glim_map': glim_map, 'nav_gps': nav_gps, 'hero': hero, 'scenario': scenario, 'first_run': first_run, 'nav_local': nav_local, 'sim_control': sim_control}
+VIDEOS_ = {'rtabmap': rtabmap, 'glim_map': glim_map, 'nav_gps': nav_gps, 'hero': hero, 'scenario': scenario, 'first_run': first_run, 'nav_local': nav_local, 'sim_control': sim_control}
 
 
 if __name__ == '__main__':

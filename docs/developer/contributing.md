@@ -44,7 +44,10 @@ python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt
        `docs/assets/videos/NAME.mp4` and its poster. Add `--preview` for a contact sheet.
 
     A shot takes 5 to 30 minutes, depending on the stack it runs; composing takes about a minute.
-    The ground truth page's plot comes from the same glim_city shot:
+    The `rtabmap` shot needs the image built with `BUILD_RTABMAP=true`: start a container of it, set
+    `JO_MEDIA_CONTAINER` to its name, and start a second virtual display for `rtabmap_viz`
+    (`Xvfb :98 -screen 0 1600x1000x24`).
+    The ground truth page's plot comes from the glim_city shot:
     `python3 docs/gen/media/plot_ground_truth.py`.
     `shots_basic.sh` (the annotated Gazebo and RViz screenshots) is the exception: it opens real
     windows on a monitor.

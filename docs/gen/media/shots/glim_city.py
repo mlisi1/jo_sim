@@ -4,7 +4,7 @@ the current aligned scan and the planned path, following Jo. Records RViz (xvfb)
 Gazebo camera (main), every third frame (3x time-lapse), and in each frame record the ground truth
 (world frame), GLIM's local and global odometry and the EKF output, each with its message stamp,
 for the ground truth page's plot (compared at equal stamps, not at the frame's sim time). The ground truth is only recorded here (evaluation), never fed to the stack.
-Used by: GLIM maps page, ground truth page, hero reel."""
+Used by: ground truth page (the plot)."""
 from nav_msgs.msg import Odometry  # noqa: E402  (the rig is prepended to this script)
 
 # map frame = Jo's spawn pose (yaw pi): map (mx, my) is world (-mx, -my)

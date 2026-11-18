@@ -84,9 +84,13 @@ class Camera:
         req.sdf = sdf
         req.name = name
         req.pose.position.z = 50
-        ok, rep = rig.gz.request(f'/world/{rig.world}/create', req, EntityFactory, Boolean, 5000)
-        if not (ok and rep.data):
-            raise RuntimeError(f'camera {name}: create failed')
+        # a long timeout, not a retry: Gazebo can be busy initialising its rendering, and a request
+        # that timed out may still be applied (a second one would then clash with the name)
+        ok, rep = rig.gz.request(f'/world/{rig.world}/create', req, EntityFactory, Boolean, 30000)
+        if not ok:
+            raise RuntimeError(f'camera {name}: no answer from /world/{rig.world}/create in 30 s')
+        if not rep.data:
+            raise RuntimeError(f'camera {name}: create refused')
         rig.gz.subscribe(GzImage, f'/rig/{name}', self._on_image)
 
     def _on_image(self, msg):
@@ -153,8 +157,9 @@ def rviz_config(name, base='sim', view=None, fixed_frame=None, set_displays=None
 
 
 class Rig:
-    def __init__(self, shot, world='office_cpr', launch=(), rviz=None, xvfb_crop=None):
+    def __init__(self, shot, world='office_cpr', launch=(), rviz=None, xvfb_crop=None, cwd=None):
         self.shot, self.world_name, self.launch_args = shot, world, list(launch)
+        self.cwd = cwd  # working directory of the launch (GLIM's viewer reads imgui.ini from it)
         self.rviz, self.xvfb_crop = rviz, xvfb_crop
         self.out = os.path.join(OUT, shot)
         shutil.rmtree(self.out, ignore_errors=True)
@@ -168,7 +173,7 @@ class Rig:
     def _spawn(self, cmd, logname, env=None):
         lf = open(os.path.join(self.out, logname), 'w')
         p = subprocess.Popen(cmd, stdout=lf, stderr=subprocess.STDOUT, start_new_session=True,
-                             env=env or os.environ)
+                             env=env or os.environ, cwd=self.cwd)
         self.procs.append(p)
         return p
 

@@ -13,13 +13,12 @@ Order: **A → DendROS/Testudo → B → C → E → F → D**.
 
 ---
 
-## Where we left off (2026-11-18, end of day)
+## Where we left off (2026-11-18, docs review done)
 
-**Implementation is finished; the docs are nearly finished.** G1–G4 are done; the media (G4) went
-through Michele's review on 2026-11-17/18 and three items remain (Next session checklist, item 1),
-then G5. Everything is committed on `dev`; **nothing of the docs work (a5a856c, d81e307) is pushed
-yet**. `dev` is merged into `main` only when everything is finished (Michele); the merge also
-publishes the docs site.
+**Implementation is finished; the docs are finished except for the G5 review.** G1–G4 are done and
+Michele approved the media and the docs on 2026-11-18, after a final docs-versus-code review. All of
+it is pushed on `dev`. `dev` is merged into `main` only when everything is finished (Michele); the
+merge also publishes the docs site.
 
 **Done** (details in each phase below; jo_sim commits on `dev`):
 - **Phases A, B, C:** stack sync, drop-in worlds with sidecars, the `./jo` wrapper, pause/step/RTF.
@@ -59,34 +58,16 @@ publishes the docs site.
   in the same commit as the feature; `mkdocs build --strict` must pass. Never `mkdocs gh-deploy`.
 
 ### Next session checklist (docs: the last media fixes, then G5)
-1. **Media fixes from Michele's review (2026-11-18), in this order:**
-   1. **GLIM video in GLIM's own viewer.** Michele: the RViz version (`/glim_ros/map`) doesn't
-      read as GLIM; it must be GLIM's GUI. Reshoot `glim_map` in small_city with
-      `glim_view:=true` (keep the Nav2 route of `shots/glim_city.py`: 5 goals ~8 m apart, 15 m
-      west then 25 m north; a single 25 m goal is aborted by Nav2). Problems seen with the viewer
-      on 2026-11-17 (office_cpr, shot glim_map, removed): its camera stays fixed (Jo leaves the
-      view on a 40 m route), and its panels (selection, submap, logging) cover the screen; the rig
-      grabbed the whole Xvfb screen (viewer 2560×1440 at 0,0) and the composition cropped and
-      masked the panels. Options to try: the viewer's config (`config_viewer`/camera mode in the
-      GLIM config dir: a follow or top-down camera, hidden panels) in a docs-only copy, never the
-      robot config; else drive the viewer with xdotool on Xvfb (not installed on the host or in
-      the container: ask before installing). GLIM's map in the viewer appears only once the first
-      submap exists (~frame 190 at stride 3): trim the start. The ground-truth plot can stay from
-      the current glim_city run (its frames.jsonl is in `~/.cache/jo_sim_media/rig/glim_city`;
-      re-running glim_city overwrites it, so regenerate the plot from the run you keep).
-   2. **Ground truth plot: the light and the dark image both show.** The page uses two raw-HTML
-      `<img>` with `#only-light` / `#only-dark` inside a `<figure>`; Material hides them only in
-      some contexts. Fix: check the built HTML; else classes in `docs/assets/css/extra.css`
-      (`[data-md-color-scheme="slate"] .jo-light {display: none}` and the reverse). Check both
-      schemes with headless Chrome.
-   3. **Install page image** (`docs/getting-started/install.md`, the last `media-ph`): Michele is
-      fine with the host name in the prompt. Shoot in **terminator** on Xvfb (never Konsole:
-      colours): `./jo up` starting the container, then `./jo shell` waiting for the workspace
-      build ("[jo_sim] waiting for the workspace build to finish....."). DendROS prints **no
-      banner**: fix the placeholder text. A real `./jo up` needs the container recreated
-      (`./jo down`): confirm with Michele before doing it.
-   Then render (`python3 docs/gen/media/videos.py glim_map hero`), `mkdocs build --strict`,
-   commit (amend or a new commit on dev, no Co-Authored-By), and ask Michele before pushing.
+1. **Done (2026-11-18): the media fixes and the last docs gaps.**
+   - GLIM video reshot in GLIM's own viewer (`shots/glim_viewer.py`: docs-only config copy and
+     `imgui.ini`); `glim_city` now only feeds the ground truth plot.
+   - Light/dark plot fixed in `extra.css`; install image shot in terminator, in a temporary container.
+   - View stamps with ease in/out on every video (`stamps()` in `compose.py`).
+   - New pages: Visual odometry (RTAB-Map), with `shots/rtabmap.py` (image built with
+     `BUILD_RTABMAP=true`, `rtabmap_viz` on Xvfb `:98`), and Recording bags.
+   - `vslam:=true` checked in office_cpr: 7.3 m, visual odometry 11 cm off at the end (12.5 cm at
+     most), never lost; no global loop closure on this short route.
+   - Troubleshooting: Nav2 far goals and the EKF startup hang (cause still unknown).
 2. **G5, the review:** a fresh agent with only the site sets up the sim and adds a sensor; Michele
    reads it as a new user. Then the merge `dev` → `main` (Michele) and Settings → Pages → Source:
    GitHub Actions.

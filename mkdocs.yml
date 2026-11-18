@@ -142,6 +142,8 @@ nav:
       - Ground truth: user-guide/ground-truth.md
       - Scenarios: user-guide/scenarios.md
       - GLIM maps: user-guide/glim-maps.md
+      - Visual odometry (RTAB-Map): user-guide/visual-odometry.md
+      - Recording bags: user-guide/bags.md
       - Two simulations at once: user-guide/multiple-simulations.md
       - DendROS and Testudo: user-guide/dendros-testudo.md
       - Performance: user-guide/performance.md

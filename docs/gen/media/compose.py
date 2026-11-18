@@ -223,13 +223,15 @@ def split(a, b, ratio=0.5, gap=6, ax_a=0.5, ax_b=0.5):
     return Clip(min(len(a), len(b)), f)
 
 
-def pip(main, small, corner='br', width=560, margin=36, label=None):
+def pip(main, small, corner='br', width=560, margin=36, label=None, at=None):
+    """small over main, in a corner or with its top-left corner at `at` (x, y)."""
     def f(i):
         img = main(i).copy()
         s = small(i)
         s = s.resize((width, round(width * s.height / s.width)), Image.LANCZOS)
         x = W - width - margin if 'r' in corner else margin
         y = H - s.height - margin if 'b' in corner else margin
+        x, y = at or (x, y)
         shadow = Image.new('RGBA', (s.width + 40, s.height + 40), (0, 0, 0, 0))
         ImageDraw.Draw(shadow).rounded_rectangle((20, 20, s.width + 20, s.height + 20), 16, fill=(0, 0, 0, 150))
         shadow = shadow.filter(ImageFilter.GaussianBlur(12))
@@ -257,6 +259,47 @@ def chip(d, text, x, y, size=24, fg=WHITE, bg=(11, 18, 32), dot=None):
         d.ellipse((x + pad, cy - r, x + pad + 2 * r, cy + r), fill=dot)
     d.text((x + pad + dx, y + size * 0.3), text, font=f, fill=fg)
     return x + tw + 2 * pad + dx
+
+
+def st(text, x=None, y=28, dot=None, size=26, frames=None):
+    """One stamp for stamps(): x None continues the row after the previous stamp; frames (a, b)
+    limits it to that stretch of the clip."""
+    return dict(text=text, x=x, y=y, dot=dot, size=size, frames=frames)
+
+
+@functools.lru_cache(None)
+def _pill(text, dot, size):
+    """A stamp at full opacity (RGBA), drawn at 3x and reduced for smooth edges."""
+    k, f = 3, font(size * 3, 'SemiBold')
+    pad, dx, h = size * 0.65 * k, (size * 0.9 * k if dot else 0), round(size * 1.75) * k
+    w = round(f.getlength(text) + 2 * pad + dx)
+    im = Image.new('RGBA', (w, h), (2, 6, 23, 0))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle((0, 0, w - 1, h - 1), h / 2, fill=(2, 6, 23, 215))
+    if dot:
+        r = size * 0.26 * k
+        d.ellipse((pad, h / 2 - r, pad + 2 * r, h / 2 + r), fill=tuple(dot) + (255,))
+    d.text((pad + dx, h / 2), text, font=f, fill=WHITE + (255,), anchor='lm')
+    return im.resize((w // k, h // k), Image.LANCZOS)
+
+
+def stamps(clip, items, n_in=14, n_out=14, delay=6, tail=12):
+    """Labels naming the views: each eases in (fading and rising), stays, and eases out `tail`
+    frames before the end of the clip (or of its `frames` stretch), clear of the final fade."""
+    def f(img, i):
+        img, end_x = img.copy(), 0
+        for s in items:
+            pill = _pill(s['text'], s['dot'], s['size'])
+            x = end_x + 12 if s['x'] is None else s['x']
+            end_x = x + pill.width
+            a0, b0 = s['frames'] or (delay, len(clip) - tail)
+            a = min(ease((i - a0) / n_in), ease((b0 - i) / n_out))
+            if a <= 0:
+                continue
+            mask = pill.getchannel('A').point(lambda v: int(v * a))
+            img.paste(pill.convert('RGB'), (x, s['y'] + round(12 * (1 - a))), mask)
+        return img
+    return clip.map(f)
 
 
 def caption(clip, title, sub=None, n_in=12, at=(64, 0), anchor='bl'):

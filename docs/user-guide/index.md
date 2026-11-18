@@ -12,6 +12,8 @@ Everything you can do with the simulator without changing its code.
 - :material-target: __[Ground truth](ground-truth.md)__: the true pose, to evaluate localization
 - :material-flag-checkered: __[Scenarios](scenarios.md)__: headless missions with pass/fail criteria
 - :material-map: __[GLIM maps](glim-maps.md)__: saving and viewing maps
+- :material-camera-outline: __[Visual odometry (RTAB-Map)](visual-odometry.md)__: the optional image, visual odometry and SLAM
+- :material-record-circle-outline: __[Recording bags](bags.md)__: record a run and play it back
 - :material-content-duplicate: __[Two simulations at once](multiple-simulations.md)__: domains and partitions
 - :material-palette: __[DendROS and Testudo](dendros-testudo.md)__: coloured logs, topic health
 - :material-speedometer: __[Performance](performance.md)__: RTF, a shared GPU, heavy worlds

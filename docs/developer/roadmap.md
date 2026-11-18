@@ -12,7 +12,7 @@ The working roadmap, with session notes, is
 | D2: ground truth | :material-check-circle: done |
 | D3: dynamic obstacles | :material-check: done (moving models; actors aren't seen by RGL) |
 | Track model re-tuning (steering calibrated against the ground truth) | :material-check-circle: done |
-| E: testing workflow (scenarios, bags, CI) | :material-progress-wrench: scenarios and bags done; CI to do |
+| E: testing workflow (scenarios, bags) | :material-check-circle: done (no simulator CI, by decision: see [Testing](testing.md#ci)) |
 | F: Docker (base image, compose profiles) | :material-check: done (ARGs next to their layers, graphics overridable; no CPU mode: RGL needs CUDA) |
-| RTAB-Map build and visual odometry check | :material-check: done |
+| RTAB-Map build, visual odometry and `vslam` check | :material-check: done |
 | G: this documentation site | :material-progress-wrench: in progress |

@@ -28,7 +28,7 @@ relative to its first message:
 <figure class="jo-media">
 <img src="../../assets/images/ground_truth_light.png#only-light" alt="Trajectories of the ground truth, GLIM and the EKF, and their position error over time" loading="lazy">
 <img src="../../assets/images/ground_truth_dark.png#only-dark" alt="Trajectories of the ground truth, GLIM and the EKF, and their position error over time" loading="lazy">
-<figcaption>small_city, <code>-n local</code>: Nav2 drives Jo 15 m west and 25 m north (the run in
+<figcaption>small_city, <code>-n local</code>: Nav2 drives Jo 15 m west and 25 m north (the route of
 the <a href="../glim-maps/">GLIM maps</a> video). Over the 40 m, GLIM's position error stays
 between 0.4 and 5.2 cm (3.2 cm at the end); the EKF, which fuses GLIM, follows it with short
 spikes of up to 5.8 cm. Each GLIM and EKF message is compared with the ground truth at its own

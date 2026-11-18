@@ -25,7 +25,7 @@ secret lives there.
 
 | Variable | Default | Effect |
 |---|---|---|
-| `BUILD_RTABMAP` | `false` | `true` builds RTAB-Map from source (slow, RAM hungry). Without it the localization stack runs without visual odometry. |
+| `BUILD_RTABMAP` | `false` | `true` builds RTAB-Map from source (slow, RAM hungry). Without it the localization stack runs without [visual odometry](../user-guide/visual-odometry.md). |
 | `GLIM_ROS_REF` | `dev` | glim_ros2 branch, tag or commit baked into the image. |
 | `GLIM_ROS_COMMIT` | a pinned commit | glim_ros2 commit applied on top. Changing it rebuilds only glim_ros (about a minute). |
 | `DENDROS_VERSION` | `latest` | DendROS release installed in the image. |
@@ -50,10 +50,10 @@ and the image is about 12 GB.
 At every start, the container rebuilds the mounted packages (`jo_description`, `jo_sim`,
 `jo_navigation`, `testudo`) with colcon. Shells opened in the meantime wait until it is done.
 
-<div class="media-ph short" data-kind="image" markdown>
-<span class="media-ph-kind">Image</span>
-<p>Terminal: <code>./jo up</code> finishing, then <code>./jo shell</code> with the DendROS banner.</p>
-</div>
+<figure class="jo-media">
+<img src="../../assets/images/install_terminal.png" alt="Terminal: ./jo up starts the container, then ./jo shell waits for the workspace build and opens a shell in the container" loading="lazy">
+<figcaption><code>./jo up</code> starts the container; <code>./jo shell</code> waits for the workspace build, then opens a shell in it.</figcaption>
+</figure>
 
 ## 4. Check it
 
