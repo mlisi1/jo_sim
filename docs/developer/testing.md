@@ -45,5 +45,5 @@ hand in a sandbox:
 
 1. `./jo --domain 77 --partition jo_sim_test scenario office_out_and_back`, `office_crossing` and `city_gps`:
    all must pass.
-2. `health` on the full stack: every topic green.
+2. `health` on the full stack: every topic green, except the `IMU-008` warning on `/imu/data`.
 3. If you changed a world patch: `./jo check --robot` on the worlds it touches.

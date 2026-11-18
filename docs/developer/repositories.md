@@ -5,7 +5,7 @@
 | [mlisi1/jo_sim](https://github.com/mlisi1/jo_sim) | (superproject) | `dev` |
 | [mlisi1/jo_description](https://github.com/mlisi1/jo_description) | `jo_description` | `dev` |
 | [mlisi1/jo_navigation](https://github.com/mlisi1/jo_navigation) | `jo_navigation` | `dev` |
-| [mlisi1/testudo](https://github.com/mlisi1/testudo) | `testudo` | `dev` |
+| [mlisi1/testudo](https://github.com/mlisi1/testudo) | `testudo` | `main` |
 | [gazebo_models_worlds_collection](https://github.com/leonhartyao/gazebo_models_worlds_collection) | `jo_sim/worlds/external` | |
 | [mlisi1/glim_ros2](https://github.com/mlisi1/glim_ros2) | baked into the image (`GLIM_ROS_REF`, `GLIM_ROS_COMMIT`) | `dev` |
 

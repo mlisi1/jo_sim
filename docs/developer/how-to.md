@@ -46,7 +46,7 @@ more.
 **Check:** in a [sandbox shell](testing.md#the-sandbox), `ros2 topic hz` and `ros2 topic echo --once`
 (frame, encoding, fields). Compare them with a bag of the real robot, or with the driver's
 configuration if you have no bag (the robot's maintainer has both). Then run the full stack
-(`-n local`) with `health`, or `health_headless` without a terminal: every topic should be green.
+(`-n local`) with `health`, or `health_headless` without a terminal: every topic should be green, except the `IMU-008` warning on `/imu/data`.
 
 ??? example "A plain colour camera"
     The Gazebo sensor, in the xacro of the link it is mounted on:

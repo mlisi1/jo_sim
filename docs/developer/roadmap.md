@@ -15,4 +15,4 @@ The working roadmap, with session notes, is
 | E: testing workflow (scenarios, bags) | :material-check-circle: done (no simulator CI, by decision: see [Testing](testing.md#ci)) |
 | F: Docker (base image, compose profiles) | :material-check: done (ARGs next to their layers, graphics overridable; no CPU mode: RGL needs CUDA) |
 | RTAB-Map build, visual odometry and `vslam` check | :material-check: done |
-| G: this documentation site | :material-progress-wrench: in progress |
+| G: this documentation site | :material-check-circle: done |

@@ -32,7 +32,7 @@ merge also publishes the docs site.
 - **check_worlds --robot over all 51 worlds:** `3133ce3`. Results table in
   `docs/user-guide/worlds.md`. Michele: making the 15 broken worlds load is NOT needed (a Gazebo
   Classic collection).
-- **Testudo:** green on the full stack, submodule at testudo dev `32f7473`: `5218f6b`.
+- **Testudo:** migrated and validated on the full stack, see the checklist below.
 - **G1 docs site:** skeleton, theme, CI, `AGENTS.md`, generated tables, logo; plus the how-to recipes.
 - **GLIM:** the new keys in the sim and robot configs (compute_covs approved for the robot), the
   viewer point size, and `T_lidar_imu`.
@@ -77,20 +77,11 @@ merge also publishes the docs site.
    own container). Not covered: a from-scratch image build (layers were cached) and GUI steps. Michele
    read the site and approved it on 2026-11-18, so G5 is done. Then the merge `dev` → `main` (Michele) and Settings → Pages → Source:
    GitHub Actions.
-3. **On hold: testudo threshold migration** (Michele 2026-11-18: wait, testudo is still in
-   development). Testudo dev (d0d3aa6, 1bdd444; unpushed when last checked) splits severity
-   (`warn`/`error`) from meter colours (`green`/`orange`/`red`). Do it together with the testudo
-   submodule bump (now 32f7473, which reads only green/orange, so migrating first would drop
-   jo_sim's thresholds): `rate_hz {green: A, orange: B}` → `{warn: A, error: B}`; /scan
-   `invalid_ratio` → `{warn: 0.5, error: 0.8}`; /gnss `position_covariance` →
-   `{warn: 1.0, green: 1.0, orange: 9.0}`; both GLIM `position_covariance_trace` →
-   `{warn: 0.05, green: 0.05, orange: 0.2}`; `cpu_percent`/`memory_mb` are **mandatory**
-   (node_profiling raises a ConfigError on green/orange/red, so the whole config would fail to
-   load): `{warn: 300, error: 600}` / `{warn: 2000, error: 6000}` (behaviour-preserving) or
-   `{warn: 300}` / `{warn: 2000}` (the testudo session's recommendation). Michele decides. Verify:
-   no "sets only green/orange/red" warning at load. After the bump `rate_hz` is checked on every
-   declared topic; measured rates (/imu/data 200 Hz vs warn 180, /scan 10 vs 9, /gnss 9.9 vs 9,
-   cameras 30.3 vs 25) pass at any RTF (testudo measures in sim time with use_sim_time).
+3. **Testudo migration done (2026-11-18/19):** `testudo.yaml` migrated to the new format, submodule at
+   the 1.0.0 release (`c52332e`, on GitHub `main`), `.gitmodules` tracks `main` (Michele). Validated
+   on the full stack with 1.0.0: goal, aborted goal (ACT-001 in 0.5 s), bag, `config init`, `replay`
+   (with and without `--watch`), TUI, `health_headless`, launch stop; earlier also lidar loss. The only
+   warning left is `IMU-008` on `/imu/data` (kept visible, to check on the robot).
 4. **Media state (2026-11-18)**, commit d81e307 (pipeline documented in contributing.md):
    - Off-screen, frame-locked pipeline in `docs/gen/media/`: `shoot.py SHOT` runs
      `shots/SHOT.py` (with `rig.py` prepended) in the container on domain 79 / partition

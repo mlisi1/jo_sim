@@ -20,35 +20,35 @@ topics:
     - name: /velodyne_points
       weight: 3
       thresholds:
-        rate_hz: {green: 9.0, orange: 5.0}
+        rate_hz: {warn: 9.0, error: 5.0}
   sensor_msgs/msg/LaserScan:
     - name: /scan
       weight: 1
       thresholds:
-        rate_hz: {green: 9.0, orange: 5.0}
+        rate_hz: {warn: 9.0, error: 5.0}
         # The VLP-16 ring used for /scan sees open sky outdoors: many out-of-range readings are normal
-        invalid_ratio: {green: 0.5, orange: 0.8}
+        invalid_ratio: {warn: 0.5, error: 0.8}
   sensor_msgs/msg/Imu:
     - name: /imu/data
       weight: 3
       thresholds:
-        rate_hz: {green: 180.0, orange: 100.0}
+        rate_hz: {warn: 180.0, error: 100.0}
   sensor_msgs/msg/NavSatFix:
     - name: /gnss
       weight: 2
       thresholds:
-        rate_hz: {green: 9.0, orange: 5.0}
+        rate_hz: {warn: 9.0, error: 5.0}
         # Sim GNSS noise is RTK-like only if sim_noise is off: accept consumer-grade sigmas
-        position_covariance: {green: 1.0, orange: 9.0}
+        position_covariance: {warn: 1.0, green: 1.0, orange: 9.0}
   sensor_msgs/msg/Image:
     - name: /front_camera/camera/color/image_raw
       weight: 1
       thresholds:
-        rate_hz: {green: 25.0, orange: 10.0}
+        rate_hz: {warn: 25.0, error: 10.0}
     - name: /back_camera/camera/color/image_raw
       weight: 1
       thresholds:
-        rate_hz: {green: 25.0, orange: 10.0}
+        rate_hz: {warn: 25.0, error: 10.0}
 
   # ── Localization (GLIM + EKF) ──
   nav_msgs/msg/Odometry:
@@ -59,31 +59,31 @@ topics:
       related_topics:
         cmd_vel: /cmd_vel
     # GLIM reports a configured constant covariance (1e-2 per axis: trace 0.03), not an estimate,
-    # so Testudo's default bound (green 0.01) would always warn
+    # so Testudo's default bound would always warn
     - name: /glim_ros/odom
       weight: 1
       thresholds:
-        position_covariance_trace: {green: 0.05, orange: 0.2}
+        position_covariance_trace: {warn: 0.05, green: 0.05, orange: 0.2}
     - name: /glim_ros/lidar_odom
       weight: 1
       thresholds:
-        position_covariance_trace: {green: 0.05, orange: 0.2}
+        position_covariance_trace: {warn: 0.05, green: 0.05, orange: 0.2}
   diagnostic_msgs/msg/DiagnosticArray:
     - name: /diagnostics   # GLIM's diagnostic_updater, 1 Hz
       weight: 1
       thresholds:
-        rate_hz: {green: 0.8, orange: 0.3}
+        rate_hz: {warn: 0.8, error: 0.3}
 
   # ── Navigation ──
   nav_msgs/msg/OccupancyGrid:
     - name: /local_costmap/costmap
       weight: 2
       thresholds:
-        rate_hz: {green: 1.5, orange: 0.5}   # publish_frequency 2.0
+        rate_hz: {warn: 1.5, error: 0.5}   # publish_frequency 2.0
     - name: /global_costmap/costmap
       weight: 1
       thresholds:
-        rate_hz: {green: 0.7, orange: 0.3}   # publish_frequency 1.0
+        rate_hz: {warn: 0.7, error: 0.3}   # publish_frequency 1.0
     # GLIM's occupancy grid is published only when the map changes: idle while the robot stands still
     - name: /glim_ros/grid
       event_driven: true
@@ -105,18 +105,14 @@ topics:
 
 actions:
   - name: navigate_to_pose
-    action_type: nav2_msgs/action/NavigateToPose
     weight: 3
     related_topics:
       feedback: /navigate_to_pose/_action/feedback
   - name: follow_waypoints
-    action_type: nav2_msgs/action/FollowWaypoints
     weight: 2
   - name: spin
-    action_type: nav2_msgs/action/Spin
     weight: 1
   - name: backup
-    action_type: nav2_msgs/action/BackUp
     weight: 1
 
 tf:
@@ -133,5 +129,6 @@ tf:
 node_profiling:
   enabled: true
   # Gazebo and GLIM (GPU) are heavy by design
-  cpu_percent: {green: 300, orange: 600}
-  memory_mb: {green: 2000, orange: 6000}
+  thresholds:
+    cpu_percent: {warn: 300}
+    memory_mb: {warn: 2000}
