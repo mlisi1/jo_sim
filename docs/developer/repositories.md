@@ -11,6 +11,21 @@
 
 `jo_description` and `jo_navigation` are shared with the robot (`jo-zotac`).
 
+## Freezing the robot for a demo
+
+jo-zotac pins `jo_description` and `jo_navigation` by commit, as jo_sim does, so a merge to their
+`main` reaches the robot only when jo-zotac's pointers move. To keep a configuration that works:
+
+1. When the robot works, tag that jo-zotac commit (for example `demo-2026-12-03`), and tag the two
+   submodule commits it pins with the same name.
+2. Development goes on in `dev` and `main`. The robot stays on the tag until you move it. Don't run
+   `git submodule update --remote` on the robot.
+3. If the demo needs a fix, branch from the tag (`demo-2026-12-03-fix`) for as long as the demo
+   lasts.
+
+To rehearse the frozen configuration in the simulator, check the tag out in jo_sim's submodules. It
+works only with `jo_description` commits that already have the simulator's `<gazebo>` content.
+
 ## Push order
 
 Push the **submodules first**, then jo_sim. That way the superproject never points to a commit that
